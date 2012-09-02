@@ -5,14 +5,14 @@ Description:
   Definitions for permutations with an emphasis on permutation
   patterns and statistics.
   .
-  ["Math.Perm"] Provides an efficient definition of standard
+  ["Math.Sym"] Provides an efficient definition of standard
   permutations (@StPerm@) together with a typeclass (@Perm@) whose
   functionality is largely inherited from @StPerm@ using a group
   action and the standardization map.
   .
-  ["Math.Perm.D8"] The dihedral group of order 8 acting on permutations.
+  ["Math.Sym.D8"] The dihedral group of order 8 acting on permutations.
   .
-  ["Math.Perm.Stat"] Common permutation statistics, such as @des@,
+  ["Math.Sym.Stat"] Common permutation statistics, such as @des@,
   @inv@, @exc@, @maj@, @fp@, @comp@, @lmin@, @lmax@, ...
 
 Homepage:            http://github.com/akc/sym
@@ -24,7 +24,7 @@ Maintainer:          anders.claesson@gmail.com
 Category:            Math
 Build-type:          Simple
 
-Extra-source-files:  cbits, include, tests/Properties.hs
+Extra-source-files:  tests/Properties.hs
 
 Cabal-version:       >=1.6
 
