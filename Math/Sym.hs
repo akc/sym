@@ -79,7 +79,7 @@ instance Monoid StPerm where
 toVector :: StPerm -> Vector Int
 toVector = perm0
 
--- | Convert a vector to a standard permutation. The vector should a
+-- | Convert a vector to a standard permutation. The vector should be a
 -- permutation of the elements @[0..k-1]@ for some positive @k@. No
 -- checks for this are done.
 fromVector :: Vector Int -> StPerm
@@ -98,7 +98,7 @@ fromList = fromVector . SV.fromList
 infixl 6 /-/
 
 -- | The /skew sum/ of two permutations. (A definition of the
--- /direct sum/ is provided by the Monoid instance.)
+-- /direct sum/ is provided by 'mappend' of the 'Monoid' instance for 'StPerm'.)
 (/-/) :: StPerm -> StPerm -> StPerm
 u /-/ v = fromVector $ (SV.++) u' v'
     where
@@ -126,8 +126,7 @@ sym n = map (unrankStPerm n) [0 .. product [1 .. toInteger n] - 1]
 
 -- | The class of permutations. Minimal complete definition: 'st' and
 -- 'act'. The default implementations of 'size' and 'idperm' can be
--- somewhat slow, so you may want to consider implementing them as
--- well.
+-- somewhat slow, so you may want to implement them as well.
 class Perm a where
 
     -- | The standardization map. If there is an underlying linear

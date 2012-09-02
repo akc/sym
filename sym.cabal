@@ -6,7 +6,7 @@ Description:
   patterns and statistics.
   .
   ["Math.Sym"] Provides an efficient definition of standard
-  permutations (@StPerm@) together with a typeclass (@Perm@) whose
+  permutations, @StPerm@, together with a typeclass, @Perm@,  whose
   functionality is largely inherited from @StPerm@ using a group
   action and the standardization map.
   .
@@ -40,7 +40,7 @@ Library
 
   Build-depends:       base >= 3 && < 5, random, vector
   
-  ghc-prof-options:    -auto-all -caf-all
+  ghc-prof-options:    -auto-all
   ghc-options:         -Wall -O2
   cc-options:          -Wall
 
