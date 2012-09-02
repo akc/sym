@@ -1,0 +1,1 @@
+void stacksort(long *, long);
