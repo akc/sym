@@ -75,6 +75,7 @@ module Math.Sym.Internal
     , rdr     -- right-most decreasing run
     , comp    -- components
     , ep      -- rank a la Elizalde & Pak
+    , dim     -- dimension
 
     -- * Sorting operators
     , stackSort
@@ -334,6 +335,9 @@ foreign import ccall unsafe "stat.h comp" c_comp
 foreign import ccall unsafe "stat.h ep" c_ep
     :: Ptr CLong -> CLong -> CLong
 
+foreign import ccall unsafe "stat.h dim" c_dim
+    :: Ptr CLong -> CLong -> CLong
+
 -- Marshal a permutation statistic defined in C to on in Haskell.
 stat :: (Ptr CLong -> CLong -> CLong) -> Perm0 -> Int
 stat f w = unsafePerformIO $
@@ -427,6 +431,10 @@ comp = stat c_comp
 -- | Rank as defined by Elizalde & Pak.
 ep :: Perm0 -> Int
 ep = stat c_ep
+
+-- | Dimension (largest non-fixed-point).
+dim :: Perm0 -> Int
+dim = stat c_dim
 
 
 -- Sorting operators

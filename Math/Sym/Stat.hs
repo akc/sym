@@ -41,6 +41,7 @@ module Math.Sym.Stat
     , rdr     -- right-most decreasing run
     , comp    -- components
     , ep      -- rank a la Elizalde & Pak
+    , dim     -- dimension
     ) where
 
 import Prelude hiding (head, last)
@@ -48,7 +49,7 @@ import Math.Sym (Perm, toVector, st)
 import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
     ( asc, des, exc, fp, inv, maj, peak, vall, dasc, ddes, lmin, lmax, rmin, rmax
-    , head, last, lir, ldr, rir, rdr, comp, ep
+    , head, last, lir, ldr, rir, rdr, comp, ep, dim
     )
 
 generalize :: Perm a => (Perm0 -> Int) -> a -> Int
@@ -152,3 +153,8 @@ comp = generalize I.comp
 -- 
 ep :: Perm a => a -> Int
 ep = generalize I.ep
+
+-- | The dimension of a permutation is defined as the largest
+-- non-fixed-point, or zero if all points are fixed.
+dim :: Perm a => a -> Int
+dim = generalize I.dim

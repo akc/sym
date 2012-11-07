@@ -242,3 +242,16 @@ ep(const long *w, long len)
 	}
 	return len;
 }
+
+/* The dimension is the largest i such that w[i] != i */
+long
+dim(const long *w, long len)
+{
+	long i, j = 0;
+
+	for (i = 0; i < len; i++, w++) {
+		if (*w != i)
+			j = i;
+	}
+	return j;
+}

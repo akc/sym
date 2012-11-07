@@ -433,8 +433,9 @@ comp w = length $ lMaxima w `cap` rMinima (bubble w)
 ep = fst . last . filter (\(k,ys) -> all (k<=) ys) . zip [0..] . inits . st
 
 des, asc, inv, lmin, lmax, rmin, rmax, peak, vall :: [Int] -> Int
-dasc, ddes, maj, comp, ep :: [Int] -> Int
+dasc, ddes, maj, comp, ep, dim :: [Int] -> Int
 
+dim w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
 maj w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
 des  = length . descents
 asc  = length . ascents
@@ -464,12 +465,13 @@ prop_peak = forAll perm $ \w -> peak w == S.peak w
 prop_vall = forAll perm $ \w -> vall w == S.vall w
 prop_dasc = forAll perm $ \w -> dasc w == S.dasc w
 prop_ddes = forAll perm $ \w -> ddes w == S.ddes w
-prop_ep   = forAll perm $ \w -> ep  w == S.ep  w
+prop_ep   = forAll perm $ \w -> ep   w == S.ep  w
 prop_lir  = forAll perm $ \w -> lir  w == S.lir  w
 prop_ldr  = forAll perm $ \w -> ldr  w == S.ldr  w
 prop_rir  = forAll perm $ \w -> rir  w == S.rir  w
 prop_rdr  = forAll perm $ \w -> rdr  w == S.rdr  w
 prop_comp = forAll perm $ \w -> comp w == S.comp w
+prop_dim  = forAll perm $ \w -> dim  w == S.dim  w
 
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copies (Sym.st "21") w)
 
@@ -496,6 +498,7 @@ testsStat =
     , ("rir",    check prop_rir)
     , ("rdr",    check prop_rdr)
     , ("comp",   check prop_comp)
+    , ("dim",    check prop_dim)
     , ("inv/21", check prop_inv_21)
     ]
 
