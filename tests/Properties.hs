@@ -153,6 +153,28 @@ prop_ordiso1 =
 prop_ordiso2 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v  ==  (Sym.inverse u `Sym.act` v == Sym.idperm v)
 
+segments :: [a] -> [[a]]
+segments [] = [[]]
+segments (x:xs) = segments xs ++ map (x:) (inits xs)
+
+nonEmptySegments :: [a] -> [[a]]
+nonEmptySegments = drop 1 . segments
+
+properSegments :: [a] -> [[a]]
+properSegments xs = [ ys | ys@(_:_:_) <- init $ segments xs ]
+
+properIntervals :: Ord a => [a] -> [[a]]
+properIntervals xs = [ ys | ys <- yss, sort ys `elem` zss ]
+    where
+      yss = properSegments xs
+      zss = properSegments $ sort xs
+
+simple :: Ord a => [a] -> Bool
+simple = null . properIntervals
+
+prop_simple =
+    forAll (resize 50 perm) $ \w -> Sym.simple w == simple w
+
 prop_unrankPerm =
     forAll perm $ \w ->
     forAll (choose (0, product [1..fromIntegral (length w) - 1])) $ \r ->
@@ -284,6 +306,7 @@ testsPerm =
     , ("inverse",                        check prop_inverse)
     , ("ordiso/1",                       check prop_ordiso1)
     , ("ordiso/2",                       check prop_ordiso2)
+    , ("simple",                         check prop_simple)
     , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)
     , ("stackSort/231",                  check prop_stackSort_231)

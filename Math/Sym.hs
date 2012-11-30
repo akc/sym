@@ -42,6 +42,9 @@ module Math.Sym
     , avoiders        -- :: Perm a => [StPerm] -> [a] -> [a]
     , av              -- :: [StPerm] -> Int -> [StPerm]
 
+    -- * Simple permutations
+    , simple          -- :: Perm a => a -> Bool
+
     -- * Subsets
     , Set
     , subsets         -- :: Int -> Int -> [Set]
@@ -295,6 +298,14 @@ avoiders ps = I.avoiders subsets (toVector . st) (map toVector ps)
 -- 
 av :: [StPerm] -> Int -> [StPerm]
 av ps = avoiders ps . sym
+
+
+-- Simple permutations
+-- -------------------
+
+-- | A predicate determining if a given permutation is simple.
+simple :: Perm a => a -> Bool
+simple = I.simple . toVector . st
 
 
 -- Subsets

@@ -43,6 +43,7 @@ module Math.Sym.Internal
     , sti
     , st
     , ordiso
+    , simple
     , copies
     , avoiders
 
@@ -226,6 +227,17 @@ ordiso u v m =
         SV.unsafeWith v $ \v' ->
         SV.unsafeWith m $ \m' ->
         return . toBool $ c_ordiso (castPtr u') (castPtr v') (castPtr m') k
+
+foreign import ccall unsafe "simple.h simple" c_simple
+    :: Ptr CLong -> CLong -> CInt
+
+-- | @simple w@ determines whether @w@ is simple
+simple :: Perm0 -> Bool
+simple w =
+    let n = fromIntegral (SV.length w)
+    in  unsafePerformIO $
+        SV.unsafeWith w $ \w' ->
+        return . toBool $ c_simple (castPtr w') n
 
 -- | @copies subsets p w@ is the list of bitmasks that represent copies of @p@ in @w@.
 copies :: (Int -> Int -> [SV.Vector Int]) -> Perm0 -> Perm0 -> [SV.Vector Int]

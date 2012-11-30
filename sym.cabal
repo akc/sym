@@ -44,7 +44,12 @@ Library
   ghc-options:         -Wall -O2
   cc-options:          -Wall
 
-  c-sources:           cbits/stat.c, cbits/sortop.c, cbits/ordiso.c, cbits/bit.c
+  c-sources:           cbits/stat.c
+                       cbits/sortop.c
+                       cbits/ordiso.c
+                       cbits/simple.c
+                       cbits/bit.c
+
   include-dirs:        include
-  includes:            stat.h, sortop.h, ordiso.h, bit.h
-  install-includes:    stat.h, sortop.h, ordiso.h, bit.h
+  includes:            stat.h, sortop.h, ordiso.h, simple.h, bit.h
+  install-includes:    stat.h, sortop.h, ordiso.h, simple.h, bit.h
