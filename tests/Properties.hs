@@ -183,35 +183,37 @@ prop_unrankPerm =
 prop_stackSort = forAll perm $ \v -> Sym.stackSort v == stack v
 
 prop_stackSort_231 =
-    forAll perm $ \v -> (Sym.stackSort v == Sym.idperm v) == (Sym.avoids [Sym.st "231"] v)
+    forAll perm $ \v ->
+        (Sym.stackSort v == Sym.idperm v) == (v `Sym.avoids` [Sym.st "231"])
 
 prop_bubbleSort = forAll perm $ \v -> Sym.bubbleSort v == bubble v
 
 prop_bubbleSort_231_321 =
-    forAll perm $ \v -> (Sym.bubbleSort v == Sym.idperm v) == (Sym.avoids [Sym.st "231", Sym.st "321"] v)
+    forAll perm $ \v ->
+        (Sym.bubbleSort v == Sym.idperm v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
 
 prop_subperm_copies p =
-    forAll (resize 21 perm) $ \w -> and [ subperm m (Sym.st w) == p | m <- Sym.copies p w ]
+    forAll (resize 21 perm) $ \w -> and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
 
 prop_copies =
     forAll (resize  6 arbitrary) $ \p ->
     forAll (resize 12 perm)      $ \w ->
-        sort (Sym.copies p w) == sort (map I.fromList $ copies (Sym.toList p) w)
+        sort (Sym.copiesOf p w) == sort (map I.fromList $ copies (Sym.toList p) w)
 
 prop_copies_self =
-    forAll perm $ \v -> Sym.copies (Sym.st v) v == [SV.fromList [0 .. length v - 1]]
+    forAll perm $ \v -> Sym.copiesOf (Sym.st v) v == [SV.fromList [0 .. length v - 1]]
 
 prop_copies_d8 (Symmetry (f,_)) =
     forAll (resize  6 arbitrary) $ \p ->
     forAll (resize 20 perm)      $ \w ->
         let p' = f p
             w' = Sym.generalize f w
-        in length (Sym.copies p w) == length (Sym.copies p' w')
+        in length (Sym.copiesOf p w) == length (Sym.copiesOf p' w')
 
 prop_avoiders_avoid =
     forAll (resize 20 arbitrary) $ \ws ->
     forAll (resize  6 arbitrary) $ \ps ->
-        all (Sym.avoids ps) $ Sym.avoiders ps (ws :: [Sym.StPerm])
+        all (`Sym.avoids` ps) $ Sym.avoiders ps (ws :: [Sym.StPerm])
 
 prop_avoiders_idempotent =
     forAll (resize 18 arbitrary) $ \vs ->
@@ -496,7 +498,7 @@ prop_rdr  = forAll perm $ \w -> rdr  w == S.rdr  w
 prop_comp = forAll perm $ \w -> comp w == S.comp w
 prop_dim  = forAll perm $ \w -> dim  w == S.dim  w
 
-prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copies (Sym.st "21") w)
+prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
 testsStat =
     [ ("asc",    check prop_asc)

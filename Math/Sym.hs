@@ -37,8 +37,8 @@ module Math.Sym
     , bubbleSort      -- :: Perm a => a -> a
 
     -- * Permutation patterns
-    , copies          -- :: Perm a => StPerm -> a -> [Set]
-    , avoids          -- :: Perm a => [StPerm] -> a -> Bool
+    , copiesOf        -- :: Perm a => StPerm -> a -> [Set]
+    , avoids          -- :: Perm a => a -> [StPerm] -> Bool
     , avoiders        -- :: Perm a => [StPerm] -> [a] -> [a]
     , av              -- :: [StPerm] -> Int -> [StPerm]
 
@@ -270,22 +270,22 @@ bubbleSort = generalize (fromVector . I.bubbleSort . toVector)
 -- Permutation patterns
 -- --------------------
 
--- | @copies p w@ is the list of (indices of) copies of the pattern
+-- | @copiesOf p w@ is the list of (indices of) copies of the pattern
 -- @p@ in the permutation @w@. E.g.,
 -- 
--- > copies (st "21") "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
+-- > copiesOf (st "21") "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
 -- 
-copies :: Perm a => StPerm -> a -> [Set]
-copies p w = I.copies subsets (toVector p) (toVector $ st w)
+copiesOf :: Perm a => StPerm -> a -> [Set]
+copiesOf p w = I.copies subsets (toVector p) (toVector $ st w)
 
--- | @avoids ps w@ is a predicate determining if @w@ avoids the patterns @ps@.
-avoids :: Perm a => [StPerm] -> a -> Bool
-avoids ps w = all null [ copies p w | p <- ps ]
+-- | @avoids w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
+avoids :: Perm a => a -> [StPerm] -> Bool
+w `avoids` ps = all null [ copiesOf p w | p <- ps ]
 
 -- | @avoiders ps v@ is the list of permutations of @v@ avoiding the
 -- patterns @ps@. This is equivalent to the definition
 -- 
--- > avoiders ps = filter (avoids ps)
+-- > avoiders ps = filter (`avoids` ps)
 -- 
 -- but is usually much faster.
 avoiders :: Perm a => [StPerm] -> [a] -> [a]
