@@ -66,7 +66,12 @@ import Foreign.C.Types (CUInt(..))
 
 -- | By a /standard permutation/ we shall mean a permutations of
 -- @[0..k-1]@.
-newtype StPerm = StPerm { perm0 :: I.Perm0 } deriving (Eq, Ord)
+newtype StPerm = StPerm { perm0 :: I.Perm0 } deriving Eq
+
+instance Ord StPerm where
+    compare u v = case comparing size u v of
+                    EQ -> compare (perm0 u) (perm0 v)
+                    x  -> x
 
 instance Show StPerm where
     show = show . toVector
