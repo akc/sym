@@ -153,6 +153,16 @@ prop_ordiso1 =
 prop_ordiso2 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v  ==  (Sym.inverse u `Sym.act` v == Sym.idperm v)
 
+shadow :: Ord a => [a] -> [[a]]
+shadow w = nubSort . map normalize $ ptDeletions w
+    where
+      normalize u = [ (sort w)!!i | i <- st u ]
+      nubSort = map head . group . sort
+      ptDeletions [] = []
+      ptDeletions xs@(x:xt) = xt : map (x:) (ptDeletions xt)
+
+prop_shadow = forAll perm $ \w -> Sym.shadow w == shadow w
+
 segments :: [a] -> [[a]]
 segments [] = [[]]
 segments (x:xs) = segments xs ++ map (x:) (inits xs)
@@ -172,8 +182,7 @@ properIntervals xs = [ ys | ys <- yss, sort ys `elem` zss ]
 simple :: Ord a => [a] -> Bool
 simple = null . properIntervals
 
-prop_simple =
-    forAll (resize 50 perm) $ \w -> Sym.simple w == simple w
+prop_simple = forAll (resize 50 perm) $ \w -> Sym.simple w == simple w
 
 prop_unrankPerm =
     forAll perm $ \w ->
@@ -308,6 +317,7 @@ testsPerm =
     , ("inverse",                        check prop_inverse)
     , ("ordiso/1",                       check prop_ordiso1)
     , ("ordiso/2",                       check prop_ordiso2)
+    , ("shadow",                         check prop_shadow)
     , ("simple",                         check prop_simple)
     , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)

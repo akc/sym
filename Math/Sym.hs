@@ -42,6 +42,10 @@ module Math.Sym
     , avoiders        -- :: Perm a => [StPerm] -> [a] -> [a]
     , av              -- :: [StPerm] -> Int -> [StPerm]
 
+    -- * Single point deletions
+    , del             -- :: Perm a => Int -> a -> a
+    , shadow          -- :: (Ord a, Perm a) => a -> [a]
+
     -- * Simple permutations
     , simple          -- :: Perm a => a -> Bool
 
@@ -54,7 +58,7 @@ import Control.Monad (liftM)
 import Data.Ord (comparing)
 import Data.Monoid (Monoid(..))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, group)
 import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as SV (Vector, toList, fromList, fromListN, empty, map, (++))
 import qualified Math.Sym.Internal as I
@@ -303,6 +307,18 @@ avoiders ps = I.avoiders subsets (toVector . st) (map toVector ps)
 -- 
 av :: [StPerm] -> Int -> [StPerm]
 av ps = avoiders ps . sym
+
+
+-- Single point deletions
+-- ----------------------
+
+-- | Delete the element at a given position
+del :: Perm a => Int -> a -> a
+del i = generalize $ fromVector . I.del i .toVector
+
+-- | The list of all single point deletions
+shadow :: (Ord a, Perm a) => a -> [a]
+shadow w = map head . group $ sort [ del i w | i <- [0 .. size w - 1]]
 
 
 -- Simple permutations

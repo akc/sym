@@ -82,6 +82,9 @@ module Math.Sym.Internal
     , stackSort
     , bubbleSort
 
+    -- * Single point deletions
+    , del
+
     -- * Bitmasks
     , onesCUInt
     , nextCUInt
@@ -473,6 +476,23 @@ stackSort = sortop c_stacksort
 -- | One pass of bubble-sort.
 bubbleSort :: Perm0 -> Perm0
 bubbleSort = sortop c_bubblesort
+
+-- Single point deletions
+-- ----------------------
+
+-- | Delete the element at a given position
+del :: Int -> Perm0 -> Perm0
+del i u = runST $ do
+  let n = SV.length u
+  let j = (SV.!) u i
+  v <- MV.unsafeNew (n-1)
+  forM_ [0..i-1] $ \k -> do
+            let m = (SV.!) u k
+            MV.unsafeWrite v k (if m < j then m else m-1)
+  forM_ [i+1..n-1] $ \k -> do
+            let m = (SV.!) u k
+            MV.unsafeWrite v (k-1) (if m < j then m else m-1)
+  SV.unsafeFreeze v
 
 
 -- Bitmasks
