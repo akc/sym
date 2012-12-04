@@ -255,3 +255,65 @@ dim(const long *w, long len)
 	}
 	return j;
 }
+
+/* The number of small ascents: i such that w[i] + 1 == w[i+1] */
+long
+asc0(const long *w, long len)
+{
+	long acc = 0;
+
+	for (; len > 1; len--, w++) {
+		if (*w + 1 == *(w+1))
+			acc++;
+	}
+	return acc;
+}
+
+
+/* The number of small descents: i such that w[i] == w[i+1] + 1*/
+long
+des0(const long *w, long len)
+{
+	long acc = 0;
+
+	for (; len > 1; len--, w++) {
+		if (*w == *(w+1) + 1)
+			acc++;
+	}
+	return acc;
+}
+
+
+/* The array of left-to-right minima */
+long
+lmin_values(long *v, const long *w, long len)
+{
+	long m = *w + 1;
+	long acc = 0;
+
+	for (; len > 0; len--, w++) {
+		if (*w < m) {
+			m = *w;
+			acc++;
+			*(v++) = m;
+		}
+	}
+	return acc;
+}
+
+/* The array of indices of left-to-right minima */
+long
+lmin_indices(long *v, const long *w, long len)
+{
+	long i, m = *w + 1;
+	long acc = 0;
+
+	for (i = 0; i < len; i++, w++) {
+		if (*w < m) {
+			m = *w;
+			acc++;
+			*(v++) = i;
+		}
+	}
+	return acc;
+}

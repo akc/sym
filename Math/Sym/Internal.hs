@@ -77,6 +77,12 @@ module Math.Sym.Internal
     , comp    -- components
     , ep      -- rank a la Elizalde & Pak
     , dim     -- dimension
+    , asc0    -- small ascents
+    , des0    -- small descents
+
+    -- * List valued permutation statistics
+    , lminValues
+    , lminIndices
 
     -- * Sorting operators
     , stackSort
@@ -104,7 +110,7 @@ import qualified Data.Vector.Storable as SV
     , head, last, filter, maximum, minimum, null, reverse, map
     )
 import qualified Data.Vector.Storable.Mutable as MV
-    ( unsafeNew, unsafeWrite, unsafeWith, swap, replicate
+    ( unsafeNew, unsafeWrite, unsafeWith, unsafeSlice, swap, replicate
     )
 import Foreign (Ptr, castPtr)
 import System.IO.Unsafe (unsafePerformIO)
@@ -353,6 +359,12 @@ foreign import ccall unsafe "stat.h ep" c_ep
 foreign import ccall unsafe "stat.h dim" c_dim
     :: Ptr CLong -> CLong -> CLong
 
+foreign import ccall unsafe "stat.h asc0" c_asc0
+    :: Ptr CLong -> CLong -> CLong
+
+foreign import ccall unsafe "stat.h des0" c_des0
+    :: Ptr CLong -> CLong -> CLong
+
 -- Marshal a permutation statistic defined in C to on in Haskell.
 stat :: (Ptr CLong -> CLong -> CLong) -> Perm0 -> Int
 stat f w = unsafePerformIO $
@@ -451,6 +463,39 @@ ep = stat c_ep
 dim :: Perm0 -> Int
 dim = stat c_dim
 
+-- | The number of small ascents.
+asc0 :: Perm0 -> Int
+asc0 = stat c_asc0
+
+-- | The number of small descents.
+des0 :: Perm0 -> Int
+des0 = stat c_des0
+
+-- Vector valued permutation statistics
+-- ----------------------------------
+
+foreign import ccall unsafe "stat.h lmin_values" c_lmin_values
+    :: Ptr CLong -> Ptr CLong -> CLong -> IO CLong
+
+foreign import ccall unsafe "stat.h lmin_indices" c_lmin_indices
+    :: Ptr CLong -> Ptr CLong -> CLong -> IO CLong
+
+record :: (Ptr CLong -> Ptr CLong -> CLong -> IO CLong) -> Perm0 -> SV.Vector Int
+record f w = unsafePerformIO $ do
+               let n = SV.length w
+               v <- MV.unsafeNew n
+               SV.unsafeWith w $ \w_ptr ->
+                 MV.unsafeWith v $ \v_ptr -> do
+                   k <- f (castPtr v_ptr) (castPtr w_ptr) (fromIntegral n)
+                   SV.unsafeFreeze $ MV.unsafeSlice 0 (fromIntegral k) v
+
+-- | The list of values of left-to-right minima
+lminValues :: Perm0 -> SV.Vector Int
+lminValues = record c_lmin_values
+
+-- | The list of indices of left-to-right minima
+lminIndices :: Perm0 -> SV.Vector Int
+lminIndices = record c_lmin_indices
 
 -- Sorting operators
 -- -----------------

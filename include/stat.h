@@ -14,3 +14,6 @@ long lir  (const long *, long); /* left-most increasing run */
 long ldr  (const long *, long); /* left-most decreasing run */
 long comp (const long *, long); /* components */
 long ep   (const long *, long); /* rank a la Elizalde & Pak */
+
+long lmin_values  (long *, const long *, long);
+long lmin_indices (long *, const long *, long);

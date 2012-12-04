@@ -470,10 +470,13 @@ ep = fst . last . filter (\(k,ys) -> all (k<=) ys) . zip [0..] . inits . st
 des, asc, inv, lmin, lmax, rmin, rmax, peak, vall :: [Int] -> Int
 dasc, ddes, maj, comp, ep, dim :: [Int] -> Int
 
-dim w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
-maj w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
-des  = length . descents
+dim  w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
+maj  w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
+asc0 w = sum [ 1 | (x,y) <- ascents  $ st w, y-x == 1 ]
+des0 w = sum [ 1 | (x,y) <- descents $ st w, x-y == 1 ]
+
 asc  = length . ascents
+des  = length . descents
 inv  = length . inversions
 lmin = length . lMinima
 lmax = length . lMaxima
@@ -507,34 +510,50 @@ prop_rir  = forAll perm $ \w -> rir  w == S.rir  w
 prop_rdr  = forAll perm $ \w -> rdr  w == S.rdr  w
 prop_comp = forAll perm $ \w -> comp w == S.comp w
 prop_dim  = forAll perm $ \w -> dim  w == S.dim  w
+prop_asc0 = forAll perm $ \w -> asc0 w == S.asc0 w
+prop_des0 = forAll perm $ \w -> des0 w == S.des0 w
 
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
+prop_lmin_values =
+    forAll perm $ \w -> lMinima (st w) == S.lminValues  w
+prop_lmin_indices =
+    forAll perm $ \w -> [ head $ elemIndices x w | x <- lMinima w ] == S.lminIndices  w
+prop_lmin_card =
+    forAll perm $ \w -> and [ S.lmin w == length (S.lminValues  w)
+                            , S.lmin w == length (S.lminIndices  w)
+                            ]
+
 testsStat =
-    [ ("asc",    check prop_asc)
-    , ("des",    check prop_des)
-    , ("exc",    check prop_exc)
-    , ("fp",     check prop_fp)
-    , ("inv",    check prop_inv)
-    , ("maj",    check prop_maj)
-    , ("lmin",   check prop_lmin)
-    , ("lmax",   check prop_lmax)
-    , ("rmin",   check prop_rmin)
-    , ("rmax",   check prop_rmax)
-    , ("head",   check prop_head)
-    , ("last",   check prop_last)
-    , ("peak",   check prop_peak)
-    , ("vall",   check prop_vall)
-    , ("dasc",   check prop_dasc)
-    , ("ddes",   check prop_ddes)
-    , ("ep",     check prop_ep)
-    , ("lir",    check prop_lir)
-    , ("ldr",    check prop_ldr)
-    , ("rir",    check prop_rir)
-    , ("rdr",    check prop_rdr)
-    , ("comp",   check prop_comp)
-    , ("dim",    check prop_dim)
-    , ("inv/21", check prop_inv_21)
+    [ ("asc",          check prop_asc)
+    , ("des",          check prop_des)
+    , ("exc",          check prop_exc)
+    , ("fp",           check prop_fp)
+    , ("inv",          check prop_inv)
+    , ("maj",          check prop_maj)
+    , ("lmin",         check prop_lmin)
+    , ("lmax",         check prop_lmax)
+    , ("rmin",         check prop_rmin)
+    , ("rmax",         check prop_rmax)
+    , ("head",         check prop_head)
+    , ("last",         check prop_last)
+    , ("peak",         check prop_peak)
+    , ("vall",         check prop_vall)
+    , ("dasc",         check prop_dasc)
+    , ("ddes",         check prop_ddes)
+    , ("ep",           check prop_ep)
+    , ("lir",          check prop_lir)
+    , ("ldr",          check prop_ldr)
+    , ("rir",          check prop_rir)
+    , ("rdr",          check prop_rdr)
+    , ("comp",         check prop_comp)
+    , ("dim",          check prop_dim)
+    , ("asc0",         check prop_asc0)
+    , ("des0",         check prop_des0)
+    , ("inv/21",       check prop_inv_21)
+    , ("lmin/values",  check prop_lmin_values)
+    , ("lmin/indices", check prop_lmin_indices)
+    , ("lmin/card",    check prop_lmin_card)
     ]
 
 ---------------------------------------------------------------------------------

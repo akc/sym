@@ -19,29 +19,33 @@
 
 module Math.Sym.Stat 
     (
-      asc     -- ascents
-    , des     -- descents
-    , exc     -- excedances
-    , fp      -- fixed points
-    , inv     -- inversions
-    , maj     -- the major index
-    , peak    -- peaks
-    , vall    -- valleys
-    , dasc    -- double ascents
-    , ddes    -- double descents
-    , lmin    -- left-to-right minima
-    , lmax    -- left-to-right maxima
-    , rmin    -- right-to-left minima
-    , rmax    -- right-to-left maxima
-    , head    -- the first element
-    , last    -- the last element
-    , lir     -- left-most increasing run
-    , ldr     -- left-most decreasing run
-    , rir     -- right-most increasing run
-    , rdr     -- right-most decreasing run
-    , comp    -- components
-    , ep      -- rank a la Elizalde & Pak
-    , dim     -- dimension
+      asc         -- ascents
+    , des         -- descents
+    , exc         -- excedances
+    , fp          -- fixed points
+    , inv         -- inversions
+    , maj         -- the major index
+    , peak        -- peaks
+    , vall        -- valleys
+    , dasc        -- double ascents
+    , ddes        -- double descents
+    , lmin        -- left-to-right minima
+    , lmax        -- left-to-right maxima
+    , rmin        -- right-to-left minima
+    , rmax        -- right-to-left maxima
+    , head        -- the first element
+    , last        -- the last element
+    , lir         -- left-most increasing run
+    , ldr         -- left-most decreasing run
+    , rir         -- right-most increasing run
+    , rdr         -- right-most decreasing run
+    , comp        -- components
+    , ep          -- rank a la Elizalde & Pak
+    , dim         -- dimension
+    , asc0        -- small ascents
+    , des0        -- small descents
+    , lminValues
+    , lminIndices
     ) where
 
 import Prelude hiding (head, last)
@@ -49,10 +53,12 @@ import Math.Sym (Perm, toVector, st)
 import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
     ( asc, des, exc, fp, inv, maj, peak, vall, dasc, ddes, lmin, lmax, rmin, rmax
-    , head, last, lir, ldr, rir, rdr, comp, ep, dim
+    , head, last, lir, ldr, rir, rdr, comp, ep, dim, asc0, des0
+    , lminValues, lminIndices
     )
+import qualified Data.Vector.Storable as SV (toList)
 
-generalize :: Perm a => (Perm0 -> Int) -> a -> Int
+generalize :: Perm a => (Perm0 -> b) -> a -> b
 generalize f = f . toVector . st
 
 -- | The number of ascents. An /ascent/ in @w@ is an index @i@ such
@@ -158,3 +164,21 @@ ep = generalize I.ep
 -- non-fixed-point, or zero if all points are fixed.
 dim :: Perm a => a -> Int
 dim = generalize I.dim
+
+-- | The number of small ascents. A /small ascent/ in @w@ is an index
+-- @i@ such that @w[i] + 1 == w[i+1]@.
+asc0 :: Perm a => a -> Int
+asc0 = generalize I.asc0
+
+-- | The number of small descents. A /small descent/ in @w@ is an
+-- index @i@ such that @w[i] == w[i+1] + 1@.
+des0 :: Perm a => a -> Int
+des0 = generalize I.des0
+
+-- | The list of values of left-to-right minima
+lminValues :: Perm a => a -> [Int]
+lminValues = generalize (SV.toList . I.lminValues)
+
+-- | The list of indices of left-to-right minima
+lminIndices :: Perm a => a -> [Int]
+lminIndices = generalize (SV.toList . I.lminIndices)
