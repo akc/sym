@@ -148,10 +148,10 @@ prop_inverse =
     forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` Sym.idperm v
 
 prop_ordiso1 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v  ==  (u == Sym.st v)
+    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
 
 prop_ordiso2 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v  ==  (Sym.inverse u `Sym.act` v == Sym.idperm v)
+    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == Sym.idperm v)
 
 shadow :: Ord a => [a] -> [[a]]
 shadow w = nubSort . map normalize $ ptDeletions w
@@ -527,12 +527,12 @@ prop_des0 = forAll perm $ \w -> des0 w == S.des0 w
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
 prop_lmin_values =
-    forAll perm $ \w -> lMinima (st w) == S.lminValues  w
+    forAll perm $ \w -> lMinima (st w) == S.lminValues w
 prop_lmin_indices =
-    forAll perm $ \w -> [ head $ elemIndices x w | x <- lMinima w ] == S.lminIndices  w
+    forAll perm $ \w -> [ head $ elemIndices x w | x <- lMinima w ] == S.lminIndices w
 prop_lmin_card =
-    forAll perm $ \w -> and [ S.lmin w == length (S.lminValues  w)
-                            , S.lmin w == length (S.lminIndices  w)
+    forAll perm $ \w -> and [ S.lmin w == length (S.lminValues w)
+                            , S.lmin w == length (S.lminIndices w)
                             ]
 
 testsStat =
