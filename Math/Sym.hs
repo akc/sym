@@ -291,7 +291,7 @@ copiesOf p w = I.copies subsets (toVector p) (toVector $ st w)
 avoids :: Perm a => a -> [StPerm] -> Bool
 w `avoids` ps = all null [ copiesOf p w | p <- ps ]
 
--- | @avoiders ps v@ is the list of permutations of @v@ avoiding the
+-- | @avoiders ps vs@ is the list of permutations in @vs@ avoiding the
 -- patterns @ps@. This is equivalent to the definition
 -- 
 -- > avoiders ps = filter (`avoids` ps)
