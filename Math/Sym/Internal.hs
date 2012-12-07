@@ -58,6 +58,7 @@ module Math.Sym.Internal
     , des     -- descents
     , exc     -- excedances
     , fp      -- fixed points
+    , cyc     -- cycles
     , inv     -- inversions
     , maj     -- the major index
     , peak    -- peaks
@@ -320,6 +321,9 @@ foreign import ccall unsafe "stat.h exc" c_exc
 foreign import ccall unsafe "stat.h fp" c_fp
     :: Ptr CLong -> CLong -> CLong
 
+foreign import ccall unsafe "stat.h cyc" c_cyc
+    :: Ptr CLong -> CLong -> CLong
+
 foreign import ccall unsafe "stat.h inv" c_inv
     :: Ptr CLong -> CLong -> CLong
 
@@ -450,6 +454,10 @@ exc = stat c_exc
 -- | The number of fixed points.
 fp :: Perm0 -> Int
 fp = stat c_fp
+
+-- | The number of cycles.
+cyc :: Perm0 -> Int
+cyc = stat c_cyc
 
 -- | The number of components.
 comp :: Perm0 -> Int

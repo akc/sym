@@ -56,6 +56,31 @@ fp(const long *w, long len)
 }
 
 
+/* The number of cycles */
+long
+cyc(const long *w, long len)
+{
+	long i = 0;
+	long j = 0;
+	long acc = 0;
+	int *called = malloc(len*sizeof(*called));
+
+	memset(called, 0, len*sizeof(*called));
+
+	while (j < len) {
+		j = w[i];
+		called[i] = 1;
+		if (called[j]) {
+			acc++;
+			while (j < len && called[j])
+				j++;
+		}
+		i = j;
+	}
+	return acc;
+}
+
+
 /* The number of inversions */
 long
 inv(const long *w, long len)

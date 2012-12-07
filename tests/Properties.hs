@@ -403,9 +403,19 @@ rMaxima = records (<) . reverse
 excedances  xs = map fst . filter (\(i,a)->i <  fromIntegral a) $ zip [0..] xs
 fixedpoints xs = map fst . filter (\(i,a)->i == fromIntegral a) $ zip [0..] xs
 
+orbit :: Eq a => (a -> a) -> a -> [a]
+orbit f x = y:takeWhile (/=y) ys where (y:ys) = iterate f x
+
+orbits :: Eq a => (a -> a) -> [a] -> [[a]]
+orbits f [] = []
+orbits f (x:xs) = ys:orbits f (xs\\ys) where ys = orbit f x
+
 exc, fp :: [Int] -> Int
 exc = length . excedances . st
 fp  = length . fixedpoints . st
+
+cyc :: [Int] -> Int
+cyc w = let v = st w in length $ orbits (v!!) v
 
 runs :: Ord a => (a -> a -> Bool) -> [a] -> [a] -> [[a]]
 runs _ [] [] = []
@@ -491,6 +501,7 @@ prop_asc  = forAll perm $ \w -> asc  w == S.asc  w
 prop_des  = forAll perm $ \w -> des  w == S.des  w
 prop_exc  = forAll perm $ \w -> exc  w == S.exc  w
 prop_fp   = forAll perm $ \w -> fp   w == S.fp   w
+prop_cyc  = forAll perm $ \w -> cyc  w == S.cyc  w
 prop_inv  = forAll perm $ \w -> inv  w == S.inv  w
 prop_maj  = forAll perm $ \w -> maj  w == S.maj  w
 prop_lmin = forAll perm $ \w -> lmin w == S.lmin w
@@ -503,7 +514,7 @@ prop_peak = forAll perm $ \w -> peak w == S.peak w
 prop_vall = forAll perm $ \w -> vall w == S.vall w
 prop_dasc = forAll perm $ \w -> dasc w == S.dasc w
 prop_ddes = forAll perm $ \w -> ddes w == S.ddes w
-prop_ep   = forAll perm $ \w -> ep   w == S.ep  w
+prop_ep   = forAll perm $ \w -> ep   w == S.ep   w
 prop_lir  = forAll perm $ \w -> lir  w == S.lir  w
 prop_ldr  = forAll perm $ \w -> ldr  w == S.ldr  w
 prop_rir  = forAll perm $ \w -> rir  w == S.rir  w
@@ -529,6 +540,7 @@ testsStat =
     , ("des",          check prop_des)
     , ("exc",          check prop_exc)
     , ("fp",           check prop_fp)
+    , ("cyc",          check prop_cyc)
     , ("inv",          check prop_inv)
     , ("maj",          check prop_maj)
     , ("lmin",         check prop_lmin)

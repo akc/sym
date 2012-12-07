@@ -23,6 +23,7 @@ module Math.Sym.Stat
     , des         -- descents
     , exc         -- excedances
     , fp          -- fixed points
+    , cyc         -- cycles
     , inv         -- inversions
     , maj         -- the major index
     , peak        -- peaks
@@ -52,7 +53,7 @@ import Prelude hiding (head, last)
 import Math.Sym (Perm, toVector, st)
 import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
-    ( asc, des, exc, fp, inv, maj, peak, vall, dasc, ddes, lmin, lmax, rmin, rmax
+    ( asc, des, exc, fp, cyc, inv, maj, peak, vall, dasc, ddes, lmin, lmax, rmin, rmax
     , head, last, lir, ldr, rir, rdr, comp, ep, dim, asc0, des0
     , lminValues, lminIndices
     )
@@ -71,15 +72,19 @@ asc = generalize I.asc
 des :: Perm a => a -> Int
 des = generalize I.des
 
--- | The number of /excedances/: positions @i@ such that @w[i] > i@;
+-- | The number of /excedances/: positions @i@ such that @w[i] > i@.
 exc :: Perm a => a -> Int
 exc = generalize I.exc
 
--- | The number of /fixed points/: positions @i@ such that @w[i] == i@;
+-- | The number of /fixed points/: positions @i@ such that @w[i] == i@.
 fp :: Perm a => a -> Int
 fp = generalize I.fp
 
--- | The number of /inversions/: pairs @\(i,j\)@ such that @i \< j@ and @w[i] > w[j]@
+-- | The number of /cycles/: orbits of the permutation when viewed as a function.
+cyc :: Perm a => a -> Int
+cyc = generalize I.cyc
+
+-- | The number of /inversions/: pairs @\(i,j\)@ such that @i \< j@ and @w[i] > w[j]@.
 inv :: Perm a => a -> Int
 inv = generalize I.inv
 
