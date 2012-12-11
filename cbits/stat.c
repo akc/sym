@@ -112,6 +112,19 @@ maj(const long *w, long len)
 	return sum;
 }
 
+/* The co-major index */
+long
+comaj(const long *w, long len)
+{
+	long i, sum = 0;
+
+	for (i = 1; i < len; i++, w++) {
+		if (*w > *(w+1))
+			sum += len - i;
+	}
+	return sum;
+}
+
 
 /* The number of peaks */
 long

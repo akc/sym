@@ -26,6 +26,7 @@ module Math.Sym.Stat
     , cyc         -- cycles
     , inv         -- inversions
     , maj         -- the major index
+    , comaj       -- the co-major index
     , peak        -- peaks
     , vall        -- valleys
     , dasc        -- double ascents
@@ -53,7 +54,8 @@ import Prelude hiding (head, last)
 import Math.Sym (Perm, toVector, st)
 import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
-    ( asc, des, exc, fp, cyc, inv, maj, peak, vall, dasc, ddes, lmin, lmax, rmin, rmax
+    ( asc, des, exc, fp, cyc, inv, maj, comaj, peak, vall, dasc, ddes
+    , lmin, lmax, rmin, rmax
     , head, last, lir, ldr, rir, rdr, comp, ep, dim, asc0, des0
     , lminValues, lminIndices
     )
@@ -91,6 +93,10 @@ inv = generalize I.inv
 -- | /The major index/ is the sum of descents.
 maj :: Perm a => a -> Int
 maj = generalize I.maj
+
+-- | /The co-major index/ is the sum of descents.
+comaj :: Perm a => a -> Int
+comaj = generalize I.comaj
 
 -- | The number of /peaks/: positions @i@ such that @w[i-1] \< w[i]@ and @w[i] \> w[i+1]@.
 peak :: Perm a => a -> Int

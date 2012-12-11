@@ -61,6 +61,7 @@ module Math.Sym.Internal
     , cyc     -- cycles
     , inv     -- inversions
     , maj     -- the major index
+    , comaj   -- the co-major index
     , peak    -- peaks
     , vall    -- valleys
     , dasc    -- double ascents
@@ -330,6 +331,9 @@ foreign import ccall unsafe "stat.h inv" c_inv
 foreign import ccall unsafe "stat.h maj" c_maj
     :: Ptr CLong -> CLong -> CLong
 
+foreign import ccall unsafe "stat.h comaj" c_comaj
+    :: Ptr CLong -> CLong -> CLong
+
 foreign import ccall unsafe "stat.h peak" c_peak
     :: Ptr CLong -> CLong -> CLong
 
@@ -414,6 +418,10 @@ inv = stat c_inv
 -- | The major index.
 maj :: Perm0 -> Int
 maj = stat c_maj
+
+-- | The co-major index.
+comaj :: Perm0 -> Int
+comaj = stat c_comaj
 
 -- | The number of peaks.
 peak :: Perm0 -> Int

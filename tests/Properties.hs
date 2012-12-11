@@ -480,10 +480,11 @@ ep = fst . last . filter (\(k,ys) -> all (k<=) ys) . zip [0..] . inits . st
 des, asc, inv, lmin, lmax, rmin, rmax, peak, vall :: [Int] -> Int
 dasc, ddes, maj, comp, ep, dim :: [Int] -> Int
 
-dim  w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
-maj  w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
-asc0 w = sum [ 1 | (x,y) <- ascents  $ st w, y-x == 1 ]
-des0 w = sum [ 1 | (x,y) <- descents $ st w, x-y == 1 ]
+dim   w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
+maj   w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
+comaj w = sum [ n-i | (i,x,y) <- zip3 [1..] w (tail w), x > y ] where n = length w
+asc0  w = sum [ 1 | (x,y) <- ascents  $ st w, y-x == 1 ]
+des0  w = sum [ 1 | (x,y) <- descents $ st w, x-y == 1 ]
 
 asc  = length . ascents
 des  = length . descents
@@ -497,32 +498,33 @@ vall = length . valleys
 dasc = length . doubleAscents
 ddes = length . doubleDescents
 
-prop_asc  = forAll perm $ \w -> asc  w == S.asc  w
-prop_des  = forAll perm $ \w -> des  w == S.des  w
-prop_exc  = forAll perm $ \w -> exc  w == S.exc  w
-prop_fp   = forAll perm $ \w -> fp   w == S.fp   w
-prop_cyc  = forAll perm $ \w -> cyc  w == S.cyc  w
-prop_inv  = forAll perm $ \w -> inv  w == S.inv  w
-prop_maj  = forAll perm $ \w -> maj  w == S.maj  w
-prop_lmin = forAll perm $ \w -> lmin w == S.lmin w
-prop_lmax = forAll perm $ \w -> lmax w == S.lmax w
-prop_rmin = forAll perm $ \w -> rmin w == S.rmin w
-prop_rmax = forAll perm $ \w -> rmax w == S.rmax w
-prop_head = forAll perm $ \w -> not (null w) ==> head (st w) == S.head w
-prop_last = forAll perm $ \w -> not (null w) ==> last (st w) == S.last w
-prop_peak = forAll perm $ \w -> peak w == S.peak w
-prop_vall = forAll perm $ \w -> vall w == S.vall w
-prop_dasc = forAll perm $ \w -> dasc w == S.dasc w
-prop_ddes = forAll perm $ \w -> ddes w == S.ddes w
-prop_ep   = forAll perm $ \w -> ep   w == S.ep   w
-prop_lir  = forAll perm $ \w -> lir  w == S.lir  w
-prop_ldr  = forAll perm $ \w -> ldr  w == S.ldr  w
-prop_rir  = forAll perm $ \w -> rir  w == S.rir  w
-prop_rdr  = forAll perm $ \w -> rdr  w == S.rdr  w
-prop_comp = forAll perm $ \w -> comp w == S.comp w
-prop_dim  = forAll perm $ \w -> dim  w == S.dim  w
-prop_asc0 = forAll perm $ \w -> asc0 w == S.asc0 w
-prop_des0 = forAll perm $ \w -> des0 w == S.des0 w
+prop_asc   = forAll perm $ \w -> asc   w == S.asc   w
+prop_des   = forAll perm $ \w -> des   w == S.des   w
+prop_exc   = forAll perm $ \w -> exc   w == S.exc   w
+prop_fp    = forAll perm $ \w -> fp    w == S.fp    w
+prop_cyc   = forAll perm $ \w -> cyc   w == S.cyc   w
+prop_inv   = forAll perm $ \w -> inv   w == S.inv   w
+prop_maj   = forAll perm $ \w -> maj   w == S.maj   w
+prop_comaj = forAll perm $ \w -> comaj w == S.comaj w
+prop_lmin  = forAll perm $ \w -> lmin  w == S.lmin  w
+prop_lmax  = forAll perm $ \w -> lmax  w == S.lmax  w
+prop_rmin  = forAll perm $ \w -> rmin  w == S.rmin  w
+prop_rmax  = forAll perm $ \w -> rmax  w == S.rmax  w
+prop_head  = forAll perm $ \w -> not (null w) ==> head (st w) == S.head w
+prop_last  = forAll perm $ \w -> not (null w) ==> last (st w) == S.last w
+prop_peak  = forAll perm $ \w -> peak  w == S.peak  w
+prop_vall  = forAll perm $ \w -> vall  w == S.vall  w
+prop_dasc  = forAll perm $ \w -> dasc  w == S.dasc  w
+prop_ddes  = forAll perm $ \w -> ddes  w == S.ddes  w
+prop_ep    = forAll perm $ \w -> ep    w == S.ep    w
+prop_lir   = forAll perm $ \w -> lir   w == S.lir   w
+prop_ldr   = forAll perm $ \w -> ldr   w == S.ldr   w
+prop_rir   = forAll perm $ \w -> rir   w == S.rir   w
+prop_rdr   = forAll perm $ \w -> rdr   w == S.rdr   w
+prop_comp  = forAll perm $ \w -> comp  w == S.comp  w
+prop_dim   = forAll perm $ \w -> dim   w == S.dim   w
+prop_asc0  = forAll perm $ \w -> asc0  w == S.asc0  w
+prop_des0  = forAll perm $ \w -> des0  w == S.des0  w
 
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
@@ -543,6 +545,7 @@ testsStat =
     , ("cyc",          check prop_cyc)
     , ("inv",          check prop_inv)
     , ("maj",          check prop_maj)
+    , ("comaj",        check prop_comaj)
     , ("lmin",         check prop_lmin)
     , ("lmax",         check prop_lmax)
     , ("rmin",         check prop_rmin)
