@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 -- |
 -- Module      : Math.Sym
 -- Copyright   : (c) Anders Claesson 2012
@@ -28,9 +30,9 @@ module Math.Sym
     , generalize      -- :: Perm a => (StPerm -> StPerm) -> a -> a
 
     -- * Generating permutations
-    , unrankPerm      -- :: Perm a => a -> Integer -> a
-    , randomPerm      -- :: Perm a => a -> IO a
-    , perms           -- :: Perm a => a -> [a]
+    , unrankPerm      -- :: Perm a => Int -> Integer -> a
+    , randomPerm      -- :: Perm a => Int -> IO a
+    , perms           -- :: Perm a => Int -> [a]
 
     -- * Sorting operators
     , stackSort       -- :: Perm a => a -> a
@@ -42,9 +44,11 @@ module Math.Sym
     , avoiders        -- :: Perm a => [StPerm] -> [a] -> [a]
     , av              -- :: [StPerm] -> Int -> [StPerm]
 
-    -- * Single point deletions
+    -- * Single point extensions and deletions
     , del             -- :: Perm a => Int -> a -> a
     , shadow          -- :: (Ord a, Perm a) => a -> [a]
+    , ext             -- :: Perm a => Int -> a -> a
+    , coshadow        -- :: (Ord a, Perm a) => a -> [a]
 
     -- * Simple permutations
     , simple          -- :: Perm a => a -> Bool
@@ -60,7 +64,10 @@ import Data.Monoid (Monoid(..))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
 import Data.Vector.Storable (Vector)
-import qualified Data.Vector.Storable as SV (Vector, toList, fromList, fromListN, empty, map, (++))
+import qualified Data.Vector.Storable as SV
+    ( Vector, toList, fromList, fromListN, empty, singleton
+    , length, map, concat, splitAt
+    )
 import qualified Math.Sym.Internal as I
 import Foreign.C.Types (CUInt(..))
 
@@ -82,7 +89,7 @@ instance Show StPerm where
 
 instance Monoid StPerm where
     mempty = fromVector SV.empty
-    mappend u v = fromVector $ (SV.++) u' v'
+    mappend u v = fromVector $ SV.concat [u', v']
         where
           u' = toVector u
           v' = SV.map ( + size u) $ toVector v
@@ -112,7 +119,7 @@ infixl 6 /-/
 -- | The /skew sum/ of two permutations. (A definition of the
 -- /direct sum/ is provided by 'mappend' of the 'Monoid' instance for 'StPerm'.)
 (/-/) :: StPerm -> StPerm -> StPerm
-u /-/ v = fromVector $ (SV.++) u' v'
+u /-/ v = fromVector $ SV.concat [u', v']
     where
       u' = SV.map ( + size v) $ toVector u
       v' = toVector v
@@ -136,9 +143,10 @@ sym n = map (unrankStPerm n) [0 .. product [1 .. toInteger n] - 1]
 -- The permutation typeclass
 -- -------------------------
 
--- | The class of permutations. Minimal complete definition: 'st' and
--- 'act'. The default implementations of 'size' and 'idperm' can be
--- somewhat slow, so you may want to implement them as well.
+-- | The class of permutations. Minimal complete definition: 'st'
+-- 'act' and 'idperm'. The default implementations of 'size' and
+-- 'neutralize' can be somewhat slow, so you may want to implement
+-- them as well.
 class Perm a where
 
     -- | The standardization map. If there is an underlying linear
@@ -154,7 +162,7 @@ class Perm a where
     -- | A (left) /group action/ of 'StPerm' on @a@. As for any group
     -- action it should hold that
     -- 
-    -- > (u `act` v) `act` w == u `act` (v `act` w)   &&   idperm u `act` v == v
+    -- > (u `act` v) `act` w == u `act` (v `act` w)   &&   neutralize u `act` v == v
     -- 
     act :: StPerm -> a -> a
 
@@ -171,29 +179,31 @@ class Perm a where
     size :: a -> Int
     size = size . st
 
-    -- | The identity permutation on the same underlying set as the
-    -- given permutation. It should hold that
+    -- | The identity permutation of the given size.
+    idperm :: Int -> a
+
+    -- | The permutation obtained by acting on the given permutation
+    -- with its own inverse; that is, the identity permutation on the
+    -- same underlying set as the given permutation. It should hold
+    -- that
     -- 
-    -- > st (idperm u) == idperm (st u)
+    -- > st (neutralize u) == neutralize (st u)
+    -- > neutralize u == inverse (st u) `act` u
+    -- > neutralize u == idperm (size u)
     -- 
-    -- Group theoretically, it should also hold that @u . inverse u ==
-    -- idperm u@. In terms of the group action this means
-    -- 
-    -- > idperm u == inverse (st u) `act` u
-    -- 
-    -- and this is the default implementation.
-    {-# INLINE idperm #-}
-    idperm :: a -> a
-    idperm u = inverse (st u) `act` u
+    -- The default implementation uses the last of these three equations.
+    {-# INLINE neutralize #-}
+    neutralize :: a -> a
+    neutralize = idperm . size
 
     -- | The group theoretical inverse. It should hold that
     -- 
-    -- > inverse u == inverse (st u) `act` idperm u
+    -- > inverse u == inverse (st u) `act` neutralize u
     -- 
     -- and this is the default implementation.
     {-# INLINE inverse #-}
     inverse :: a -> a
-    inverse u = inverse (st u) `act` idperm u
+    inverse u = inverse (st u) `act` neutralize u
 
     -- | Predicate determining if two permutations are
     -- order-isomorphic. The default implementation uses
@@ -202,7 +212,7 @@ class Perm a where
     -- 
     -- Equivalently, one could use
     -- 
-    -- > u `ordiso` v  ==  inverse u `act` v == idperm v
+    -- > u `ordiso` v  ==  inverse u `act` v == neutralize v
     -- 
     {-# INLINE ordiso #-}
     ordiso :: StPerm -> a -> Bool
@@ -212,7 +222,7 @@ instance Perm StPerm where
     st         = id
     act u v    = fromVector $ I.act (toVector u) (toVector v)
     size       = I.size . toVector
-    idperm     = fromVector . I.idperm . size
+    idperm     = fromVector . I.idperm
     inverse    = fromVector . I.inverse . toVector
     ordiso     = (==)
 
@@ -221,12 +231,25 @@ instance Perm StPerm where
 act' :: Ord a => [a] -> [b] -> [b]
 act' u = map snd . sortBy (comparing fst) . zip u
 
-instance (Enum a, Ord a) => Perm [a] where
-    st         = fromVector . I.st . I.fromList . map fromEnum
-    act u      = act' $ toList (inverse u)
-    inverse v  = act' v (idperm v)
+stL :: Enum a => [a] -> StPerm
+stL = fromVector . I.st . I.fromList . map fromEnum
+
+actL :: StPerm -> [a] -> [a]
+actL u = act' $ toList (inverse u)
+
+instance Perm String where
+    st         = stL
+    act        = actL
+    inverse v  = act' v (neutralize v)
     size       = length
-    idperm     = sort
+    idperm n   = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..'z'] ++ ['{'..]
+
+instance Perm [Int] where
+    st         = stL
+    act        = actL
+    inverse v  = act' v (neutralize v)
+    size       = length
+    idperm n   = [1..n]
 
 
 -- Generalize
@@ -234,34 +257,34 @@ instance (Enum a, Ord a) => Perm [a] where
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
 -- 
--- > generalize f v = f (st v) `act` idperm v
+-- > generalize f v = f (st v) `act` neutralize v
 -- 
 -- Note that this will only work as intended if @f@ is size preserving.
 generalize :: Perm a => (StPerm -> StPerm) -> a -> a
-generalize f v = f (st v) `act` idperm v
+generalize f v = f (st v) `act` neutralize v
 
 
 -- Generating permutations
 -- -----------------------
 
 -- | @unrankPerm u rank@ is the @rank@-th (Myrvold & Ruskey)
--- permutation of @u@. E.g.,
+-- permutation of size @n@. E.g.,
 -- 
--- > unrankPerm ['1'..'9'] 88888 == "561297843"
+-- > unrankPerm 9 88888 == "561297843"
 -- 
-unrankPerm :: Perm a => a -> Integer -> a
-unrankPerm u = (`act` u) . fromVector . I.unrankPerm (size u)
+unrankPerm :: Perm a => Int -> Integer -> a
+unrankPerm n = (`act` idperm n) . fromVector . I.unrankPerm n
 
--- | @randomPerm u@ is a random permutation of @u@.
-randomPerm :: Perm a => a -> IO a
-randomPerm u = ((`act` u) . fromVector . I.fromLehmercode) `liftM` I.randomLehmercode (size u)
+-- | @randomPerm n@ is a random permutation of size @n@.
+randomPerm :: Perm a => Int -> IO a
+randomPerm n = ((`act` idperm n) . fromVector . I.fromLehmercode) `liftM` I.randomLehmercode n
 
--- | All permutations of a given permutation. E.g.,
+-- | All permutations of a given size. E.g.,
 -- 
--- > perms "123" == ["123","213","321","132","231","312"]
+-- > perms 3 == ["123","213","321","132","231","312"]
 -- 
-perms :: Perm a => a -> [a]
-perms u = map (`act` u) $ sym (size u)
+perms :: Perm a => Int -> [a]
+perms n = map (`act` idperm n) $ sym n
 
 
 -- Sorting operators
@@ -309,16 +332,29 @@ av :: [StPerm] -> Int -> [StPerm]
 av ps = avoiders ps . sym
 
 
--- Single point deletions
--- ----------------------
+-- Single point extensions and deletions
+-- -------------------------------------
 
 -- | Delete the element at a given position
 del :: Perm a => Int -> a -> a
-del i = generalize $ fromVector . I.del i .toVector
+del i = generalize $ fromVector . I.del i . toVector
 
 -- | The list of all single point deletions
 shadow :: (Ord a, Perm a) => a -> [a]
 shadow w = map head . group $ sort [ del i w | i <- [0 .. size w - 1]]
+
+-- | Insert a new largest element at the given position
+ext :: Perm a => Int -> a -> a
+ext i = generalize' $ fromVector . ext0 . toVector
+    where
+      generalize' f w = f (st w) `act` idperm (1+size w)
+      ext0 w = SV.concat [u, SV.singleton (SV.length w), v]
+          where
+            (u,v) = SV.splitAt i w
+
+-- | The list of all single point extensions
+coshadow :: (Ord a, Perm a) => a -> [a]
+coshadow w = map head . group $ sort [ ext i w | i <- [0 .. size w]]
 
 
 -- Simple permutations

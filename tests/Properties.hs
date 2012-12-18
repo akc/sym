@@ -34,15 +34,10 @@ lenRank2 = do (n, r1) <- lenRank
               r2 <- rank n
               return (n, r1, r2)
 
-moreThan :: Int -> Gen Int
-moreThan x = (\d -> x + abs d) `liftM` choose (1, 100)
-
-vecFrom :: Int -> Int -> Gen [Int]
-vecFrom 0 _ = return []
-vecFrom n x = moreThan x >>= liftM (x:) . vecFrom (n-1)
-
-incVec :: Int -> Gen [Int]
-incVec n = arbitrary >>= vecFrom n
+lenRank3 :: Gen (Int, Integer, Integer, Integer)
+lenRank3 = do (n, r1, r2) <- lenRank2
+              r3 <- rank n
+              return (n, r1, r2, r3)
 
 -- The sub-permutation determined by a set of indices.
 subperm :: Sym.Set -> Sym.StPerm -> Sym.StPerm
@@ -55,20 +50,21 @@ instance Arbitrary Sym.StPerm where
     arbitrary = uncurry Sym.unrankStPerm `liftM` lenRank
     shrink w = nub $ [0 .. Sym.size w - 1] >>= \k -> subperms k w
 
-perm2 :: Gen (Sym.StPerm, [Int])
-perm2 = do u <- arbitrary
-           v <- incVec (Sym.size u)
-           return (u, v)
+perm :: Gen [Int]
+perm = liftM (\w -> w `Sym.act` [1..Sym.size w]) arbitrary
 
-perm3 :: Gen (Sym.StPerm, Sym.StPerm, [Int])
-perm3 = do (n,r1,r2) <- lenRank2
+perm2 :: Gen (Sym.StPerm, [Int])
+perm2 = do (n,r1,r2) <- lenRank2
            let u = Sym.unrankStPerm n r1
            let v = Sym.unrankStPerm n r2
-           w <- incVec n
-           return (u, v, w)
+           return (u, v `Sym.act` [1..n])
 
-perm :: Gen [Int]
-perm = liftM (uncurry Sym.act) perm2
+perm3 :: Gen (Sym.StPerm, Sym.StPerm, [Int])
+perm3 = do (n,r1,r2,r3) <- lenRank3
+           let u = Sym.unrankStPerm n r1
+           let v = Sym.unrankStPerm n r2
+           let w = Sym.unrankStPerm n r3
+           return (u, v, w `Sym.act` [1..n])
 
 newtype Symmetry = Symmetry (Sym.StPerm -> Sym.StPerm, String)
 
@@ -124,7 +120,7 @@ prop_sym = and [ sort (Sym.sym n) == sort (sym' n) | n<-[0..6] ]
       sym' n = map Sym.fromList $ Data.List.permutations [0..fromIntegral n - 1]
 
 prop_perm =
-    and [ sort (Sym.perms [1..n]) == sort (permutations [1..n]) | n<-[0..6] ]
+    and [ sort (Sym.perms n) == sort (permutations [1..n]) | n<-[0..6::Int] ]
 
 prop_st =
     forAll perm2 $ \(u,v) -> Sym.st (u `Sym.act` v) == u `Sym.act` Sym.st v
@@ -133,7 +129,7 @@ prop_act_def =
     forAll perm2 $ \(u,v) -> u `Sym.act` v == map (v!!) (Sym.toList u)
 
 prop_act_id =
-    forAll perm2 $ \(u,v) -> Sym.idperm u `Sym.act` v == v
+    forAll perm2 $ \(u,v) -> Sym.neutralize u `Sym.act` v == v
 
 prop_act_associative =
     forAll perm3 $ \(u,v,w) -> (u `Sym.act` v) `Sym.act` w == u `Sym.act` (v `Sym.act` w)
@@ -141,27 +137,36 @@ prop_act_associative =
 prop_size =
     forAll perm $ \v -> Sym.size v == Sym.size (Sym.st v)
 
-prop_idperm =
-    forAll perm2 $ \(u,v) -> Sym.idperm u == Sym.inverse (Sym.st u) `Sym.act` u
+prop_neutralize =
+    forAll perm2 $ \(u,v) -> Sym.neutralize u == Sym.inverse (Sym.st u) `Sym.act` u
 
 prop_inverse =
-    forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` Sym.idperm v
+    forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` Sym.neutralize v
 
 prop_ordiso1 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
 
 prop_ordiso2 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == Sym.idperm v)
+    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == Sym.neutralize v)
 
 shadow :: Ord a => [a] -> [[a]]
 shadow w = nubSort . map normalize $ ptDeletions w
     where
-      normalize u = [ (sort w)!!i | i <- st u ]
+      w' = sort w
+      normalize u = [ w'!!i | i <- st u ]
       nubSort = map head . group . sort
       ptDeletions [] = []
       ptDeletions xs@(x:xt) = xt : map (x:) (ptDeletions xt)
 
-prop_shadow = forAll perm $ \w -> Sym.shadow w == shadow w
+prop_shadow = forAll (resize 30 perm) $ \w -> Sym.shadow w == shadow w
+
+coshadow :: (Enum a, Ord a) => [a] -> [[a]]
+coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
+    where
+      ptExtensions n [] = [[n]]
+      ptExtensions n xs@(x:xt) = (n:xs) : map (x:) (ptExtensions n xt)
+
+prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow w == coshadow w
 
 segments :: [a] -> [[a]]
 segments [] = [[]]
@@ -182,24 +187,25 @@ properIntervals xs = [ ys | ys <- yss, sort ys `elem` zss ]
 simple :: Ord a => [a] -> Bool
 simple = null . properIntervals
 
-prop_simple = forAll (resize 50 perm) $ \w -> Sym.simple w == simple w
+prop_simple = forAll (resize 40 perm) $ \w -> Sym.simple w == simple w
 
 prop_unrankPerm =
     forAll perm $ \w ->
-    forAll (choose (0, product [1..fromIntegral (length w) - 1])) $ \r ->
-        Sym.st (Sym.unrankPerm (sort w) r) == Sym.unrankStPerm (length w) r
+        let n = length w
+        in forAll (choose (0, product [1..fromIntegral n - 1])) $ \r ->
+            Sym.st (Sym.unrankPerm n r :: [Int]) == Sym.unrankStPerm n r
 
 prop_stackSort = forAll perm $ \v -> Sym.stackSort v == stack v
 
 prop_stackSort_231 =
     forAll perm $ \v ->
-        (Sym.stackSort v == Sym.idperm v) == (v `Sym.avoids` [Sym.st "231"])
+        (Sym.stackSort v == Sym.neutralize v) == (v `Sym.avoids` [Sym.st "231"])
 
 prop_bubbleSort = forAll perm $ \v -> Sym.bubbleSort v == bubble v
 
 prop_bubbleSort_231_321 =
     forAll perm $ \v ->
-        (Sym.bubbleSort v == Sym.idperm v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
+        (Sym.bubbleSort v == Sym.neutralize v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
 
 prop_subperm_copies p =
     forAll (resize 21 perm) $ \w -> and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
@@ -295,7 +301,7 @@ prop_subsets_cardinality1 =
 prop_subsets_cardinality2 =
     forAll (choose (0,20)) $ \n ->
     forAll (choose (0,20)) $ \k ->
-        let cs = map (SV.length) (Sym.subsets n k) in ((k > n) && null cs) || ([k] == nub cs)
+        let cs = map SV.length (Sym.subsets n k) in ((k > n) && null cs) || ([k] == nub cs)
 
 testsPerm =
     [ ("monoid/mempty/1",                check prop_monoid_mempty1)
@@ -313,11 +319,12 @@ testsPerm =
     , ("act/id",                         check prop_act_id)
     , ("act/associative",                check prop_act_associative)
     , ("size",                           check prop_size)
-    , ("idperm",                         check prop_idperm)
+    , ("neutralize",                     check prop_neutralize)
     , ("inverse",                        check prop_inverse)
     , ("ordiso/1",                       check prop_ordiso1)
     , ("ordiso/2",                       check prop_ordiso2)
     , ("shadow",                         check prop_shadow)
+    , ("coshadow",                       check prop_coshadow)
     , ("simple",                         check prop_simple)
     , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)
@@ -510,8 +517,8 @@ prop_lmin  = forAll perm $ \w -> lmin  w == S.lmin  w
 prop_lmax  = forAll perm $ \w -> lmax  w == S.lmax  w
 prop_rmin  = forAll perm $ \w -> rmin  w == S.rmin  w
 prop_rmax  = forAll perm $ \w -> rmax  w == S.rmax  w
-prop_head  = forAll perm $ \w -> not (null w) ==> head (st w) == S.head w
-prop_last  = forAll perm $ \w -> not (null w) ==> last (st w) == S.last w
+prop_head  = forAll perm $ \w -> not (null w) ==> head w == 1 + S.head w
+prop_last  = forAll perm $ \w -> not (null w) ==> last w == 1 + S.last w
 prop_peak  = forAll perm $ \w -> peak  w == S.peak  w
 prop_vall  = forAll perm $ \w -> vall  w == S.vall  w
 prop_dasc  = forAll perm $ \w -> dasc  w == S.dasc  w
