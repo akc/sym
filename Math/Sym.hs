@@ -20,6 +20,7 @@ module Math.Sym
     , toList          -- :: StPerm -> [Int]
     , fromList        -- :: [Int] -> StPerm
     , (/-/)           -- :: StPerm -> StPerm -> StPerm
+    , bijection       -- :: StPerm -> Int -> Int
     , unrankStPerm    -- :: Int -> Integer -> StPerm
     , sym             -- :: Int -> [StPerm]
 
@@ -65,7 +66,7 @@ import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
 import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as SV
-    ( Vector, toList, fromList, fromListN, empty, singleton
+    ( (!), Vector, toList, fromList, fromListN, empty, singleton
     , length, map, concat, splitAt
     )
 import qualified Math.Sym.Internal as I
@@ -123,6 +124,10 @@ u /-/ v = fromVector $ SV.concat [u', v']
     where
       u' = SV.map ( + size v) $ toVector u
       v' = toVector v
+
+-- | The bijective function defined by a given standard permutation.
+bijection :: StPerm -> Int -> Int
+bijection w = (SV.!) (toVector w)
 
 -- | @unrankStPerm n rank@ is the @rank@-th (Myrvold & Ruskey)
 -- permutation of @[0..n-1]@. E.g.,
