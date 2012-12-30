@@ -168,11 +168,6 @@ coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
 
 prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow w == coshadow w
 
--- prop_lMaxima =
---     forAll perm $ \w -> SV.fromList (rMaxIndices w) == Sym.lMaxima w
---         where
---           rMaxIndices w = [ head $ elemIndices x w | x <- lMaxima w ]
-
 prop_record f g =
     forAll perm $ \w -> SV.fromList (recordIndices w) == f w
         where
@@ -197,6 +192,18 @@ prop_rMaxima_card =
 
 prop_rMinima_card =
     forAll perm $ \w -> S.rmin w == SV.length (Sym.rMinima w)
+
+-- The list of indices of components in a permutation
+components w = lMaxima w `cap` rMinima (bubble w)
+
+-- The list of indices of skew components in a permutation
+skewComponents w = components $ map (\x -> length w - x - 1) w
+
+prop_components =
+    forAll perm $ \w -> components (st w) == SV.toList (Sym.components w)
+
+prop_skewComponents =
+    forAll perm $ \w -> skewComponents (st w) == SV.toList (Sym.skewComponents w)
 
 segments :: [a] -> [[a]]
 segments [] = [[]]
@@ -364,6 +371,8 @@ testsPerm =
     , ("lMinima/card",                   check prop_lMinima_card)
     , ("rMaxima/card",                   check prop_rMaxima_card)
     , ("rMinima/card",                   check prop_rMinima_card)
+    , ("components",                     check prop_components)
+    , ("skewComponents",                 check prop_skewComponents)
     , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)
     , ("stackSort/231",                  check prop_stackSort_231)
@@ -517,7 +526,10 @@ cap xs@(x:xt) ys@(y:yt) = case compare x y of
                             GT -> cap xs yt
 
 -- The number of components in a permutation
-comp w = length $ lMaxima w `cap` rMinima (bubble w)
+comp = length . components
+
+-- The number of skew components in a permutation
+scomp = length . skewComponents
 
 -- rank a la Elizalde
 ep = fst . last . filter (\(k,ys) -> all (k<=) ys) . zip [0..] . inits . st
@@ -567,6 +579,7 @@ prop_ldr   = forAll perm $ \w -> ldr   w == S.ldr   w
 prop_rir   = forAll perm $ \w -> rir   w == S.rir   w
 prop_rdr   = forAll perm $ \w -> rdr   w == S.rdr   w
 prop_comp  = forAll perm $ \w -> comp  w == S.comp  w
+prop_scomp = forAll perm $ \w -> scomp w == S.scomp w
 prop_dim   = forAll perm $ \w -> dim   w == S.dim   w
 prop_asc0  = forAll perm $ \w -> asc0  w == S.asc0  w
 prop_des0  = forAll perm $ \w -> des0  w == S.des0  w
@@ -598,6 +611,7 @@ testsStat =
     , ("rir",          check prop_rir)
     , ("rdr",          check prop_rdr)
     , ("comp",         check prop_comp)
+    , ("scomp",        check prop_scomp)
     , ("dim",          check prop_dim)
     , ("asc0",         check prop_asc0)
     , ("des0",         check prop_des0)

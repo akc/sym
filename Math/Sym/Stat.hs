@@ -42,6 +42,7 @@ module Math.Sym.Stat
     , rir         -- right-most increasing run
     , rdr         -- right-most decreasing run
     , comp        -- components
+    , scomp       -- skew components
     , ep          -- rank a la Elizalde & Pak
     , dim         -- dimension
     , asc0        -- small ascents
@@ -54,7 +55,7 @@ import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
     ( asc, des, exc, fp, cyc, inv, maj, comaj, peak, vall, dasc, ddes
     , lmin, lmax, rmin, rmax
-    , head, last, lir, ldr, rir, rdr, comp, ep, dim, asc0, des0
+    , head, last, lir, ldr, rir, rdr, comp, scomp, ep, dim, asc0, des0
     )
 
 generalize :: Perm a => (Perm0 -> b) -> a -> b
@@ -158,6 +159,11 @@ rdr = generalize I.rdr
 -- components: @[2,0,3,1]@, @[4]@ and @[6,7,5]@.
 comp :: Perm a => a -> Int
 comp = generalize I.comp
+
+-- | The number of skew components. E.g., @[5,7,4,6,3,1,0,2]@ has three
+-- skew components: @[5,7,4,6]@, @[3]@ and @[1,0,2]@.
+scomp :: Perm a => a -> Int
+scomp = generalize I.scomp
 
 -- | The rank as defined by Elizalde and Pak [Bijections for
 -- refined restricted permutations, /J. Comb. Theory, Ser. A/, 2004]:

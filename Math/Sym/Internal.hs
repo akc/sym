@@ -77,6 +77,7 @@ module Math.Sym.Internal
     , rir     -- right-most increasing run
     , rdr     -- right-most decreasing run
     , comp    -- components
+    , scomp   -- skew components
     , ep      -- rank a la Elizalde & Pak
     , dim     -- dimension
     , asc0    -- small ascents
@@ -85,6 +86,9 @@ module Math.Sym.Internal
     -- * Left-to-right maxima, etc
     , lMaxima
     , rMaxima
+
+    -- * Components
+    , components
 
     -- * Sorting operators
     , stackSort
@@ -471,6 +475,10 @@ cyc = stat c_cyc
 comp :: Perm0 -> Int
 comp = stat c_comp
 
+-- | The number of skew components. 
+scomp :: Perm0 -> Int
+scomp = comp . complement
+
 -- | Rank as defined by Elizalde & Pak.
 ep :: Perm0 -> Int
 ep = stat c_ep
@@ -491,7 +499,7 @@ des0 = stat c_des0
 -- Left-to-right maxima, etc
 -- -------------------------
 
--- | The list of indices of left-to-right maxima.
+-- | The set of indices of left-to-right maxima.
 lMaxima :: Perm0 -> SV.Vector Int
 lMaxima w = runST $ do
   v <- MV.unsafeNew n
@@ -509,10 +517,31 @@ lMaxima w = runST $ do
           else
             iter v (i-1) j m
 
--- | The list of indices of right-to-left maxima.
+-- | The set of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
 rMaxima w = SV.reverse . SV.map (\x -> SV.length w - x - 1) . lMaxima $ reverse w
 
+
+-- Components
+-- ----------
+
+-- | The set of indices of components.
+components :: Perm0 -> SV.Vector Int
+components w = runST $ do
+  v <- MV.unsafeNew n
+  k <- iter v n 0 (-1)
+  SV.unsafeFreeze $ MV.unsafeSlice 0 k v
+    where
+      n = size w
+      {-# INLINE iter #-}
+      iter _ 0 _ _ = return 0
+      iter v i j m = do
+        let m' = max m $ (SV.!) w (n-i)
+        if m' == n-i then do
+            MV.unsafeWrite v j (n-i)
+            (+1) `liftM` iter v (i-1) (j+1) m'
+          else
+            iter v (i-1) j m'
 
 -- Sorting operators
 -- -----------------

@@ -57,6 +57,10 @@ module Math.Sym
     , rMaxima         -- :: Perm a => a -> Set
     , rMinima         -- :: Perm a => a -> Set
 
+    -- * Components and skew components
+    , components
+    , skewComponents
+
     -- * Simple permutations
     , simple          -- :: Perm a => a -> Bool
 
@@ -387,6 +391,19 @@ rMaxima = I.rMaxima . toVector . st
 -- | The set of indices of right-to-left minima.
 rMinima :: Perm a => a -> Set
 rMinima = I.rMaxima . I.complement . toVector . st
+
+
+-- Components and skew components
+---------------------------------
+
+-- | The set of indices of components.
+components :: Perm a => a -> Set
+components = I.components . toVector . st
+
+-- | The set of indices of skew components.
+skewComponents :: Perm a => a -> Set
+skewComponents = I.components . I.complement . toVector . st
+
 
 -- Simple permutations
 -- -------------------
