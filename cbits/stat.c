@@ -320,38 +320,3 @@ des0(const long *w, long len)
 	}
 	return acc;
 }
-
-
-/* The array of left-to-right minima */
-long
-lmin_values(long *v, const long *w, long len)
-{
-	long m = *w + 1;
-	long acc = 0;
-
-	for (; len > 0; len--, w++) {
-		if (*w < m) {
-			m = *w;
-			acc++;
-			*(v++) = m;
-		}
-	}
-	return acc;
-}
-
-/* The array of indices of left-to-right minima */
-long
-lmin_indices(long *v, const long *w, long len)
-{
-	long i, m = *w + 1;
-	long acc = 0;
-
-	for (i = 0; i < len; i++, w++) {
-		if (*w < m) {
-			m = *w;
-			acc++;
-			*(v++) = i;
-		}
-	}
-	return acc;
-}

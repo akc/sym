@@ -46,8 +46,6 @@ module Math.Sym.Stat
     , dim         -- dimension
     , asc0        -- small ascents
     , des0        -- small descents
-    , lminValues
-    , lminIndices
     ) where
 
 import Prelude hiding (head, last)
@@ -57,9 +55,7 @@ import qualified Math.Sym.Internal as I
     ( asc, des, exc, fp, cyc, inv, maj, comaj, peak, vall, dasc, ddes
     , lmin, lmax, rmin, rmax
     , head, last, lir, ldr, rir, rdr, comp, ep, dim, asc0, des0
-    , lminValues, lminIndices
     )
-import qualified Data.Vector.Storable as SV (toList)
 
 generalize :: Perm a => (Perm0 -> b) -> a -> b
 generalize f = f . toVector . st
@@ -185,11 +181,3 @@ asc0 = generalize I.asc0
 -- index @i@ such that @w[i] == w[i+1] + 1@.
 des0 :: Perm a => a -> Int
 des0 = generalize I.des0
-
--- | The list of values of left-to-right minima
-lminValues :: Perm a => a -> [Int]
-lminValues = generalize (SV.toList . I.lminValues)
-
--- | The list of indices of left-to-right minima
-lminIndices :: Perm a => a -> [Int]
-lminIndices = generalize (SV.toList . I.lminIndices)

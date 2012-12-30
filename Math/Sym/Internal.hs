@@ -82,9 +82,9 @@ module Math.Sym.Internal
     , asc0    -- small ascents
     , des0    -- small descents
 
-    -- * List valued permutation statistics
-    , lminValues
-    , lminIndices
+    -- * Left-to-right maxima, etc
+    , lMaxima
+    , rMaxima
 
     -- * Sorting operators
     , stackSort
@@ -387,11 +387,11 @@ head = SV.head
 last :: Perm0 -> Int
 last = SV.last
 
--- | The number of right-to-left minima.
+-- | The number of left-to-right minima.
 rmin :: Perm0 -> Int
 rmin = lmin . SV.reverse
 
--- | The number of right-to-left maxima.
+-- | The number of left-to-right maxima.
 rmax :: Perm0 -> Int
 rmax = lmax . SV.reverse
 
@@ -487,31 +487,30 @@ asc0 = stat c_asc0
 des0 :: Perm0 -> Int
 des0 = stat c_des0
 
--- Vector valued permutation statistics
--- ----------------------------------
+-- Left-to-right maxima, etc
+-- -------------------------
 
-foreign import ccall unsafe "stat.h lmin_values" c_lmin_values
-    :: Ptr CLong -> Ptr CLong -> CLong -> IO CLong
+-- | The list of indices of left-to-right maxima.
+lMaxima :: Perm0 -> SV.Vector Int
+lMaxima w = runST $ do
+  v <- MV.unsafeNew n
+  k <- iter v n 0 (-1)
+  SV.unsafeFreeze $ MV.unsafeSlice 0 k v
+    where
+      n = size w
+      {-# INLINE iter #-}
+      iter _ 0 _ _ = return 0
+      iter v i j m = do
+        let m' = (SV.!) w (n-i)
+        if m' > m then do
+            MV.unsafeWrite v j (n-i)
+            (+1) `liftM` iter v (i-1) (j+1) m'
+          else
+            iter v (i-1) j m
 
-foreign import ccall unsafe "stat.h lmin_indices" c_lmin_indices
-    :: Ptr CLong -> Ptr CLong -> CLong -> IO CLong
+rMaxima :: Perm0 -> SV.Vector Int
+rMaxima w = SV.reverse . SV.map (\x -> SV.length w - x - 1) . lMaxima $ reverse w
 
-record :: (Ptr CLong -> Ptr CLong -> CLong -> IO CLong) -> Perm0 -> SV.Vector Int
-record f w = unsafePerformIO $ do
-               let n = SV.length w
-               v <- MV.unsafeNew n
-               SV.unsafeWith w $ \w_ptr ->
-                 MV.unsafeWith v $ \v_ptr -> do
-                   k <- f (castPtr v_ptr) (castPtr w_ptr) (fromIntegral n)
-                   SV.unsafeFreeze $ MV.unsafeSlice 0 (fromIntegral k) v
-
--- | The list of values of left-to-right minima
-lminValues :: Perm0 -> SV.Vector Int
-lminValues = record c_lmin_values
-
--- | The list of indices of left-to-right minima
-lminIndices :: Perm0 -> SV.Vector Int
-lminIndices = record c_lmin_indices
 
 -- Sorting operators
 -- -----------------

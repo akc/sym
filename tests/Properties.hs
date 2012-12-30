@@ -168,6 +168,36 @@ coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
 
 prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow w == coshadow w
 
+-- prop_lMaxima =
+--     forAll perm $ \w -> SV.fromList (rMaxIndices w) == Sym.lMaxima w
+--         where
+--           rMaxIndices w = [ head $ elemIndices x w | x <- lMaxima w ]
+
+prop_record f g =
+    forAll perm $ \w -> SV.fromList (recordIndices w) == f w
+        where
+          recordIndices w = [ head $ elemIndices x w | x <- g w ]
+
+prop_lMaxima = prop_record Sym.lMaxima lMaxima
+
+prop_lMinima = prop_record Sym.lMinima lMinima
+
+prop_rMaxima = prop_record Sym.rMaxima rMaxima
+
+prop_rMinima = prop_record Sym.rMinima rMinima
+
+prop_lMaxima_card =
+    forAll perm $ \w -> S.lmax w == SV.length (Sym.lMaxima w)
+
+prop_lMinima_card =
+    forAll perm $ \w -> S.lmin w == SV.length (Sym.lMinima w)
+
+prop_rMaxima_card =
+    forAll perm $ \w -> S.rmax w == SV.length (Sym.rMaxima w)
+
+prop_rMinima_card =
+    forAll perm $ \w -> S.rmin w == SV.length (Sym.rMinima w)
+
 segments :: [a] -> [[a]]
 segments [] = [[]]
 segments (x:xs) = segments xs ++ map (x:) (inits xs)
@@ -326,6 +356,14 @@ testsPerm =
     , ("shadow",                         check prop_shadow)
     , ("coshadow",                       check prop_coshadow)
     , ("simple",                         check prop_simple)
+    , ("lMaxima",                        check prop_lMaxima)
+    , ("lMinima",                        check prop_lMinima)
+    , ("rMaxima",                        check prop_rMaxima)
+    , ("rMinima",                        check prop_rMinima)
+    , ("lMaxima/card",                   check prop_lMaxima_card)
+    , ("lMinima/card",                   check prop_lMinima_card)
+    , ("rMaxima/card",                   check prop_rMaxima_card)
+    , ("rMinima/card",                   check prop_rMinima_card)
     , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)
     , ("stackSort/231",                  check prop_stackSort_231)
@@ -535,15 +573,6 @@ prop_des0  = forAll perm $ \w -> des0  w == S.des0  w
 
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
-prop_lmin_values =
-    forAll perm $ \w -> lMinima (st w) == S.lminValues w
-prop_lmin_indices =
-    forAll perm $ \w -> [ head $ elemIndices x w | x <- lMinima w ] == S.lminIndices w
-prop_lmin_card =
-    forAll perm $ \w -> and [ S.lmin w == length (S.lminValues w)
-                            , S.lmin w == length (S.lminIndices w)
-                            ]
-
 testsStat =
     [ ("asc",          check prop_asc)
     , ("des",          check prop_des)
@@ -573,9 +602,6 @@ testsStat =
     , ("asc0",         check prop_asc0)
     , ("des0",         check prop_des0)
     , ("inv/21",       check prop_inv_21)
-    , ("lmin/values",  check prop_lmin_values)
-    , ("lmin/indices", check prop_lmin_indices)
-    , ("lmin/card",    check prop_lmin_card)
     ]
 
 ---------------------------------------------------------------------------------

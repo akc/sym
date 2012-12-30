@@ -19,6 +19,3 @@ long ep   (const long *, long); /* rank a la Elizalde & Pak */
 long dim  (const long *, long); /* dimension */
 long asc0 (const long *, long); /* small ascents */
 long des0 (const long *, long); /* small descents */
-
-long lmin_values  (long *, const long *, long); /* values of left-to-right minima */
-long lmin_indices (long *, const long *, long); /* indices of left-to-right minima */

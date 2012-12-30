@@ -51,6 +51,12 @@ module Math.Sym
     , ext             -- :: Perm a => Int -> a -> a
     , coshadow        -- :: (Ord a, Perm a) => a -> [a]
 
+    -- * Left-to-right maxima and similar functions
+    , lMaxima         -- :: Perm a => a -> Set
+    , lMinima         -- :: Perm a => a -> Set
+    , rMaxima         -- :: Perm a => a -> Set
+    , rMinima         -- :: Perm a => a -> Set
+
     -- * Simple permutations
     , simple          -- :: Perm a => a -> Bool
 
@@ -125,7 +131,7 @@ u /-/ v = fromVector $ SV.concat [u', v']
       u' = SV.map ( + size v) $ toVector u
       v' = toVector v
 
--- | The bijective function defined by a given standard permutation.
+-- | The bijective function defined by a standard permutation.
 bijection :: StPerm -> Int -> Int
 bijection w = (SV.!) (toVector w)
 
@@ -348,7 +354,8 @@ del i = generalize $ fromVector . I.del i . toVector
 shadow :: (Ord a, Perm a) => a -> [a]
 shadow w = map head . group $ sort [ del i w | i <- [0 .. size w - 1]]
 
--- | Insert a new largest element at the given position
+-- | Extend a permutation by inserting a new largest element at the
+-- given position
 ext :: Perm a => Int -> a -> a
 ext i = generalize' $ fromVector . ext0 . toVector
     where
@@ -361,6 +368,25 @@ ext i = generalize' $ fromVector . ext0 . toVector
 coshadow :: (Ord a, Perm a) => a -> [a]
 coshadow w = map head . group $ sort [ ext i w | i <- [0 .. size w]]
 
+
+-- Left-to-right maxima and similar functions
+-- ------------------------------------------
+
+-- | The set of indices of left-to-right maxima.
+lMaxima :: Perm a => a -> Set
+lMaxima = I.lMaxima . toVector . st
+
+-- | The set of indices of left-to-right minima.
+lMinima :: Perm a => a -> Set
+lMinima = I.lMaxima . I.complement . toVector . st
+
+-- | The set of indices of right-to-left maxima.
+rMaxima :: Perm a => a -> Set
+rMaxima = I.rMaxima . toVector . st
+
+-- | The set of indices of right-to-left minima.
+rMinima :: Perm a => a -> Set
+rMinima = I.rMaxima . I.complement . toVector . st
 
 -- Simple permutations
 -- -------------------
