@@ -487,6 +487,7 @@ asc0 = stat c_asc0
 des0 :: Perm0 -> Int
 des0 = stat c_des0
 
+
 -- Left-to-right maxima, etc
 -- -------------------------
 
@@ -508,6 +509,7 @@ lMaxima w = runST $ do
           else
             iter v (i-1) j m
 
+-- | The list of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
 rMaxima w = SV.reverse . SV.map (\x -> SV.length w - x - 1) . lMaxima $ reverse w
 
@@ -536,6 +538,7 @@ stackSort = sortop c_stacksort
 -- | One pass of bubble-sort.
 bubbleSort :: Perm0 -> Perm0
 bubbleSort = sortop c_bubblesort
+
 
 -- Single point deletions
 -- ----------------------
