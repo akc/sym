@@ -47,10 +47,11 @@ module Math.Sym.Stat
     , dim         -- dimension
     , asc0        -- small ascents
     , des0        -- small descents
+    , shad        -- shadow
     ) where
 
 import Prelude hiding (head, last)
-import Math.Sym (Perm, toVector, st)
+import Math.Sym (Perm, toVector, st, shadow)
 import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I 
     ( asc, des, exc, fp, cyc, inv, maj, comaj, peak, vall, dasc, ddes
@@ -187,3 +188,8 @@ asc0 = generalize I.asc0
 -- index @i@ such that @w[i] == w[i+1] + 1@.
 des0 :: Perm a => a -> Int
 des0 = generalize I.des0
+
+-- | The size of the shadow of @w@. That is, the number of different
+-- one point deletions of @w@.
+shad :: Perm a => a -> Int
+shad = length . shadow . st

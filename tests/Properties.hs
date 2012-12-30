@@ -554,6 +554,7 @@ peak = length . peaks
 vall = length . valleys
 dasc = length . doubleAscents
 ddes = length . doubleDescents
+shad = length . shadow
 
 prop_asc   = forAll perm $ \w -> asc   w == S.asc   w
 prop_des   = forAll perm $ \w -> des   w == S.des   w
@@ -583,6 +584,7 @@ prop_scomp = forAll perm $ \w -> scomp w == S.scomp w
 prop_dim   = forAll perm $ \w -> dim   w == S.dim   w
 prop_asc0  = forAll perm $ \w -> asc0  w == S.asc0  w
 prop_des0  = forAll perm $ \w -> des0  w == S.des0  w
+prop_shad  = forAll perm $ \w -> shad  w == S.shad  w
 
 prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
 
@@ -615,6 +617,7 @@ testsStat =
     , ("dim",          check prop_dim)
     , ("asc0",         check prop_asc0)
     , ("des0",         check prop_des0)
+    , ("shad",         check prop_shad)
     , ("inv/21",       check prop_inv_21)
     ]
 
