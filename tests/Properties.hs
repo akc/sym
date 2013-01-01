@@ -3,8 +3,10 @@
 -- License     : BSD-style
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 
+import Data.Ord
 import Data.List
 import Data.Monoid
+import Data.Function
 import Control.Monad
 import qualified Math.Sym as Sym
 import qualified Math.Sym.D8 as D8
@@ -30,14 +32,16 @@ lenRank = sized $ \m -> do
             return (n, r)
 
 lenRank2 :: Gen (Int, Integer, Integer)
-lenRank2 = do (n, r1) <- lenRank
-              r2 <- rank n
-              return (n, r1, r2)
+lenRank2 = do
+  (n, r1) <- lenRank
+  r2 <- rank n
+  return (n, r1, r2)
 
 lenRank3 :: Gen (Int, Integer, Integer, Integer)
-lenRank3 = do (n, r1, r2) <- lenRank2
-              r3 <- rank n
-              return (n, r1, r2, r3)
+lenRank3 = do
+  (n, r1, r2) <- lenRank2
+  r3 <- rank n
+  return (n, r1, r2, r3)
 
 -- The sub-permutation determined by a set of indices.
 subperm :: Sym.Set -> Sym.StPerm -> Sym.StPerm
@@ -54,17 +58,26 @@ perm :: Gen [Int]
 perm = liftM (\w -> w `Sym.act` [1..Sym.size w]) arbitrary
 
 perm2 :: Gen (Sym.StPerm, [Int])
-perm2 = do (n,r1,r2) <- lenRank2
-           let u = Sym.unrankStPerm n r1
-           let v = Sym.unrankStPerm n r2
-           return (u, v `Sym.act` [1..n])
+perm2 = do
+  (n,r1,r2) <- lenRank2
+  let u = Sym.unrankStPerm n r1
+  let v = Sym.unrankStPerm n r2
+  return (u, v `Sym.act` [1..n])
 
 perm3 :: Gen (Sym.StPerm, Sym.StPerm, [Int])
-perm3 = do (n,r1,r2,r3) <- lenRank3
-           let u = Sym.unrankStPerm n r1
-           let v = Sym.unrankStPerm n r2
-           let w = Sym.unrankStPerm n r3
-           return (u, v, w `Sym.act` [1..n])
+perm3 = do
+  (n,r1,r2,r3) <- lenRank3
+  let u = Sym.unrankStPerm n r1
+  let v = Sym.unrankStPerm n r2
+  let w = Sym.unrankStPerm n r3
+  return (u, v, w `Sym.act` [1..n])
+
+stPermsOfEqualLength :: Gen [Sym.StPerm]
+stPermsOfEqualLength = sized $ \m -> do
+  n  <- choose (0,m)
+  k  <- choose (0,m^2)
+  rs <- replicateM k $ rank n
+  return $ nub $ map (Sym.unrankStPerm n) rs
 
 newtype Symmetry = Symmetry (Sym.StPerm -> Sym.StPerm, String)
 
@@ -399,22 +412,50 @@ testsPerm =
 -- Properties for Math.Sym.D8
 ---------------------------------------------------------------------------------
 
+fn (Symmetry (f,_)) = f
+
 prop_D8_orbit fs w = all (`elem` orbD8) $ D8.orbit (map fn fs) w
     where
       orbD8 = D8.orbit D8.d8 w
-      fn (Symmetry (f,_)) = f
 
 prop_D8_reverse w    = I.reverse    (Sym.toVector w) == Sym.toVector (D8.reverse w)
 prop_D8_complement w = I.complement (Sym.toVector w) == Sym.toVector (D8.complement w)
 prop_D8_inverse w    = I.inverse    (Sym.toVector w) == Sym.toVector (D8.inverse w)
 prop_D8_rotate w     = I.rotate     (Sym.toVector w) == Sym.toVector (D8.rotate w)
 
+-- Auxilary function that partitions a list xs with respect to the
+-- equivalence induced by a function f; i.e. x ~ y iff f x == f y.
+-- The time complexity is the same as for sorting, O(n log n).
+eqClasses :: Ord a => (b -> a) -> [b] -> [[b]]
+eqClasses f xs = (map . map) snd . group' $ sort' [ (f x, x) | x <- xs ]
+    where
+      group' = groupBy ((==) `on` fst)
+      sort' = sortBy $ comparing fst
+
+symmetryClasses :: (Ord a, Sym.Perm a) => [a -> a] -> [a] -> [[a]]
+symmetryClasses fs xs = sort . map sort $ eqClasses (D8.orbit fs) xs
+
+prop_symmetryClasses fs =
+    forAll (resize 10 stPermsOfEqualLength) $ \ws ->
+        symmetryClasses fs ws == D8.symmetryClasses fs ws
+
+prop_symmetryClasses_d8     = prop_symmetryClasses D8.d8
+prop_symmetryClasses_klein4 = prop_symmetryClasses D8.klein4
+prop_symmetryClasses_ei     = prop_symmetryClasses [D8.id, D8.inverse]
+prop_symmetryClasses_er     = prop_symmetryClasses [D8.id, D8.reverse]
+prop_symmetryClasses_ec     = prop_symmetryClasses [D8.id, D8.complement]
+
 testsD8 =
-    [ ("D8/orbit",       check prop_D8_orbit)
-    , ("D8/reverse",     check prop_D8_reverse)
-    , ("D8/complement",  check prop_D8_complement)
-    , ("D8/inverse",     check prop_D8_inverse)
-    , ("D8/rotate",      check prop_D8_rotate)
+    [ ("D8/orbit",                   check prop_D8_orbit)
+    , ("D8/reverse",                 check prop_D8_reverse)
+    , ("D8/complement",              check prop_D8_complement)
+    , ("D8/inverse",                 check prop_D8_inverse)
+    , ("D8/rotate",                  check prop_D8_rotate)
+    , ("D8/symmetryClasses/ei",      check prop_symmetryClasses_ei)
+    , ("D8/symmetryClasses/er",      check prop_symmetryClasses_er)
+    , ("D8/symmetryClasses/ec",      check prop_symmetryClasses_ec)
+    , ("D8/symmetryClasses/d8",      check prop_symmetryClasses_d8)
+    , ("D8/symmetryClasses/klein4",  check prop_symmetryClasses_klein4)
     ]
 
 ---------------------------------------------------------------------------------

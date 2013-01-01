@@ -15,30 +15,33 @@
 module Math.Sym.D8
     (
     -- * The group elements
-      r0            -- :: Perm a => a -> a
-    , r1            -- :: Perm a => a -> a
-    , r2            -- :: Perm a => a -> a
-    , r3            -- :: Perm a => a -> a
-    , s0            -- :: Perm a => a -> a
-    , s1            -- :: Perm a => a -> a
-    , s2            -- :: Perm a => a -> a
-    , s3            -- :: Perm a => a -> a
+      r0              -- :: Perm a => a -> a
+    , r1              -- :: Perm a => a -> a
+    , r2              -- :: Perm a => a -> a
+    , r3              -- :: Perm a => a -> a
+    , s0              -- :: Perm a => a -> a
+    , s1              -- :: Perm a => a -> a
+    , s2              -- :: Perm a => a -> a
+    , s3              -- :: Perm a => a -> a
 
     -- * D8, the klein four-group, and orbits
-    , d8            -- :: Perm a => [a -> a]
-    , klein4        -- :: Perm a => [a -> a]
-    , orbit         -- :: Ord a => Perm a => [a -> a] -> a -> [a]
+    , d8              -- :: Perm a => [a -> a]
+    , klein4          -- :: Perm a => [a -> a]
+    , orbit           -- :: (Ord a, Perm a) => [a -> a] -> a -> [a]
+    , symmetryClasses -- :: (Ord a, Perm a) => [a -> a] -> [a] -> [[a]]
+    , d8Classes       -- :: (Ord a, Perm a) => [a] -> [[a]]
+    , klein4Classes   -- :: (Ord a, Perm a) => [a] -> [[a]]
 
     -- * Aliases
-    , id            -- :: Perm a => a -> a
-    , rotate        -- :: Perm a => a -> a
-    , complement    -- :: Perm a => a -> a
-    , reverse       -- :: Perm a => a -> a
-    , inverse       -- :: Perm a => a -> a
+    , id              -- :: Perm a => a -> a
+    , rotate          -- :: Perm a => a -> a
+    , complement      -- :: Perm a => a -> a
+    , reverse         -- :: Perm a => a -> a
+    , inverse         -- :: Perm a => a -> a
     ) where
 
 import Prelude hiding (reverse, id)
-import Data.List (group, sort)
+import Data.List (group, sort, insert)
 import Math.Sym (Perm (size), fromVector, act)
 import qualified Math.Sym (inverse)
 import Math.Sym.Internal (revIdperm)
@@ -98,12 +101,29 @@ d8 = [r0, r1, r2, r3, s0, s1, s2, s3]
 klein4 :: Perm a => [a -> a]
 klein4 = [r0, r2, s0, s1]
 
--- | @orbit fs x@ is the orbit of @x@ under the functions in @fs@. E.g.,
+-- | @orbit fs x@ is the orbit of @x@ under the /group/ of function @fs@. E.g.,
 -- 
 -- > orbit klein4 "2314" == ["1423","2314","3241","4132"]
 -- 
-orbit :: Ord a => Perm a => [a -> a] -> a -> [a]
+orbit :: (Ord a, Perm a) => [a -> a] -> a -> [a]
 orbit fs x = map head . group $ sort [ f x | f <- fs ]
+
+-- | @symmetryClasses fs xs@ is the list of equivalence classes under
+-- the action of the /group/ of functions @fs@.
+symmetryClasses :: (Ord a, Perm a) => [a -> a] -> [a] -> [[a]]
+symmetryClasses _  [] = []
+symmetryClasses fs xs@(x:xt) = insert orb $ symmetryClasses fs ys
+    where
+      orb = [ w | w <- orbit fs x, w `elem` xs ]
+      ys  = [ y | y <- xt, y `notElem` orb ]
+
+-- | Symmetry classes with respect to D8.
+d8Classes :: (Ord a, Perm a) => [a] -> [[a]]
+d8Classes = symmetryClasses d8
+
+-- | Symmetry classes with respect to Klein4
+klein4Classes :: (Ord a, Perm a) => [a] -> [[a]]
+klein4Classes = symmetryClasses klein4
 
 
 -- Aliases
