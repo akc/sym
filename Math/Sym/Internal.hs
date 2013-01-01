@@ -508,14 +508,15 @@ lMaxima w = runST $ do
     where
       n = size w
       {-# INLINE iter #-}
-      iter _ 0 _ _ = return 0
+      iter _ 0 j _ = return j
       iter v i j m = do
         let m' = (SV.!) w (n-i)
         if m' > m then do
             MV.unsafeWrite v j (n-i)
-            (+1) `liftM` iter v (i-1) (j+1) m'
+            iter v (i-1) (j+1) m'
           else
             iter v (i-1) j m
+
 
 -- | The set of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
@@ -534,12 +535,12 @@ components w = runST $ do
     where
       n = size w
       {-# INLINE iter #-}
-      iter _ 0 _ _ = return 0
+      iter _ 0 j _ = return j
       iter v i j m = do
         let m' = max m $ (SV.!) w (n-i)
         if m' == n-i then do
             MV.unsafeWrite v j (n-i)
-            (+1) `liftM` iter v (i-1) (j+1) m'
+            iter v (i-1) (j+1) m'
           else
             iter v (i-1) j m'
 
