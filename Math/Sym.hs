@@ -71,6 +71,7 @@ module Math.Sym
 
 import Control.Monad (liftM)
 import Data.Ord (comparing)
+import Data.Char (ord)
 import Data.Monoid (Monoid(..))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
@@ -246,21 +247,25 @@ instance Perm StPerm where
 act' :: Ord a => [a] -> [b] -> [b]
 act' u = map snd . sortBy (comparing fst) . zip u
 
-stL :: Enum a => [a] -> StPerm
-stL = fromVector . I.st . I.fromList . map fromEnum
-
 actL :: StPerm -> [a] -> [a]
 actL u = act' $ toList (inverse u)
 
+stString :: String -> StPerm
+stString = fromList . map f
+    where
+      f c | '1' <= c && c <= '9' = ord c - ord '1'
+          | 'A' <= c && c <= 'Z' = ord c - ord 'A' + 9
+          | otherwise            = ord c - ord 'a' + 35
+
 instance Perm String where
-    st         = stL
+    st         = stString
     act        = actL
     inverse v  = act' v (neutralize v)
     size       = length
-    idperm n   = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..'z'] ++ ['{'..]
+    idperm n   = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
 
 instance Perm [Int] where
-    st         = stL
+    st         = fromList . map (+(-1))
     act        = actL
     inverse v  = act' v (neutralize v)
     size       = length
