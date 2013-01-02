@@ -192,4 +192,4 @@ des0 = generalize I.des0
 -- | The size of the shadow of @w@. That is, the number of different
 -- one point deletions of @w@.
 shad :: Perm a => a -> Int
-shad = length . shadow . st
+shad = length . shadow . return . st

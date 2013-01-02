@@ -163,15 +163,24 @@ prop_ordiso2 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == Sym.neutralize v)
 
 shadow :: Ord a => [a] -> [[a]]
-shadow w = nubSort . map normalize $ ptDeletions w
+shadow w = nubsort . map normalize $ ptDeletions w
     where
       w' = sort w
       normalize u = [ w'!!i | i <- st u ]
-      nubSort = map head . group . sort
+      nubsort = map head . group . sort
       ptDeletions [] = []
       ptDeletions xs@(x:xt) = xt : map (x:) (ptDeletions xt)
 
-prop_shadow = forAll (resize 30 perm) $ \w -> Sym.shadow w == shadow w
+prop_shadow = forAll (resize 30 perm) $ \w -> Sym.shadow [w] == shadow w
+
+prop_downset_shadow =
+    forAll (resize 10 perm) $ \w ->
+        [ v | v <- Sym.downset [w], 1 + length v == length w ] == Sym.shadow [w]
+
+prop_downset_orderideal =
+    forAll (resize 9 perm) $ \w -> null [ v | v <- Sym.downset [w]
+                                        , w `Sym.avoids` [Sym.st v]
+                                        ]
 
 coshadow :: (Enum a, Ord a) => [a] -> [[a]]
 coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
@@ -179,7 +188,7 @@ coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
       ptExtensions n [] = [[n]]
       ptExtensions n xs@(x:xt) = (n:xs) : map (x:) (ptExtensions n xt)
 
-prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow w == coshadow w
+prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
 prop_record f g =
     forAll perm $ \w -> SV.fromList (recordIndices w) == f w
@@ -375,6 +384,8 @@ testsPerm =
     , ("ordiso/2",                       check prop_ordiso2)
     , ("shadow",                         check prop_shadow)
     , ("coshadow",                       check prop_coshadow)
+    , ("downset/shadow",                 check prop_downset_shadow)
+    , ("downset/orderideal",             check prop_downset_orderideal)
     , ("simple",                         check prop_simple)
     , ("lMaxima",                        check prop_lMaxima)
     , ("lMinima",                        check prop_lMinima)

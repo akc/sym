@@ -54,34 +54,34 @@ module Math.Sym.Internal
     , rotate
 
     -- * Permutation statistics
-    , asc     -- ascents
-    , des     -- descents
-    , exc     -- excedances
-    , fp      -- fixed points
-    , cyc     -- cycles
-    , inv     -- inversions
-    , maj     -- the major index
-    , comaj   -- the co-major index
-    , peak    -- peaks
-    , vall    -- valleys
-    , dasc    -- double ascents
-    , ddes    -- double descents
-    , lmin    -- left-to-right minima
-    , lmax    -- left-to-right maxima
-    , rmin    -- right-to-left minima
-    , rmax    -- right-to-left maxima
-    , head    -- the first element
-    , last    -- the last element
-    , lir     -- left-most increasing run
-    , ldr     -- left-most decreasing run
-    , rir     -- right-most increasing run
-    , rdr     -- right-most decreasing run
-    , comp    -- components
-    , scomp   -- skew components
-    , ep      -- rank a la Elizalde & Pak
-    , dim     -- dimension
-    , asc0    -- small ascents
-    , des0    -- small descents
+    , asc
+    , des
+    , exc
+    , fp
+    , cyc
+    , inv
+    , maj
+    , comaj
+    , peak
+    , vall
+    , dasc
+    , ddes
+    , lmin
+    , lmax
+    , rmin
+    , rmax
+    , head
+    , last
+    , lir
+    , ldr
+    , rir
+    , rdr
+    , comp
+    , scomp
+    , ep
+    , dim
+    , asc0
+    , des0
 
     -- * Left-to-right maxima, etc
     , lMaxima
@@ -101,6 +101,7 @@ module Math.Sym.Internal
     , onesCUInt
     , nextCUInt
     , nextIntegral
+
     ) where
 
 import Prelude hiding (reverse, head, last)

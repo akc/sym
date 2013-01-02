@@ -15,58 +15,60 @@ module Math.Sym
     (
     -- * Standard permutations
       StPerm
-    , toVector        -- :: StPerm -> Vector Int
-    , fromVector      -- :: Vector Int -> StPerm
-    , toList          -- :: StPerm -> [Int]
-    , fromList        -- :: [Int] -> StPerm
-    , (/-/)           -- :: StPerm -> StPerm -> StPerm
-    , bijection       -- :: StPerm -> Int -> Int
-    , unrankStPerm    -- :: Int -> Integer -> StPerm
-    , sym             -- :: Int -> [StPerm]
+    , toVector
+    , fromVector
+    , toList
+    , fromList
+    , (/-/)
+    , bijection
+    , unrankStPerm
+    , sym
 
     -- * The permutation typeclass
     , Perm (..)
 
-    -- * Generalize
-    , generalize      -- :: Perm a => (StPerm -> StPerm) -> a -> a
+    -- * Generalize and normalize
+    , generalize
+    , normalize
 
     -- * Generating permutations
-    , unrankPerm      -- :: Perm a => Int -> Integer -> a
-    , randomPerm      -- :: Perm a => Int -> IO a
-    , perms           -- :: Perm a => Int -> [a]
+    , unrankPerm
+    , randomPerm
+    , perms
 
     -- * Sorting operators
-    , stackSort       -- :: Perm a => a -> a
-    , bubbleSort      -- :: Perm a => a -> a
+    , stackSort
+    , bubbleSort
 
     -- * Permutation patterns
-    , copiesOf        -- :: Perm a => StPerm -> a -> [Set]
-    , avoids          -- :: Perm a => a -> [StPerm] -> Bool
-    , avoiders        -- :: Perm a => [StPerm] -> [a] -> [a]
-    , av              -- :: [StPerm] -> Int -> [StPerm]
+    , copiesOf
+    , avoids
+    , avoiders
+    , av
 
-    -- * Single point extensions and deletions
-    , del             -- :: Perm a => Int -> a -> a
-    , shadow          -- :: (Ord a, Perm a) => a -> [a]
-    , ext             -- :: Perm a => Int -> a -> a
-    , coshadow        -- :: (Ord a, Perm a) => a -> [a]
+    -- * Single point extensions/deletions, shadows and downsets
+    , del
+    , shadow
+    , downset
+    , ext
+    , coshadow
 
     -- * Left-to-right maxima and similar functions
-    , lMaxima         -- :: Perm a => a -> Set
-    , lMinima         -- :: Perm a => a -> Set
-    , rMaxima         -- :: Perm a => a -> Set
-    , rMinima         -- :: Perm a => a -> Set
+    , lMaxima
+    , lMinima
+    , rMaxima
+    , rMinima
 
     -- * Components and skew components
     , components
     , skewComponents
 
     -- * Simple permutations
-    , simple          -- :: Perm a => a -> Bool
+    , simple
 
     -- * Subsets
     , Set
-    , subsets         -- :: Int -> Int -> [Set]
+    , subsets
     ) where
 
 import Control.Monad (liftM)
@@ -272,8 +274,8 @@ instance Perm [Int] where
     idperm n   = [1..n]
 
 
--- Generalize
--- ----------
+-- Generalize and normalize
+-- ------------------------
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
 -- 
@@ -283,6 +285,13 @@ instance Perm [Int] where
 generalize :: Perm a => (StPerm -> StPerm) -> a -> a
 generalize f v = f (st v) `act` neutralize v
 
+-- | Sort a list of permutations with respect to the standardization
+-- and remove duplicates
+normalize :: (Ord a, Perm a) => [a] -> [a]
+normalize xs = map ((`act` idperm n) . head) . group $ sort ys
+    where
+      ys = map st xs
+      n = maximum $ map size ys
 
 -- Generating permutations
 -- -----------------------
@@ -352,16 +361,24 @@ av :: [StPerm] -> Int -> [StPerm]
 av ps = avoiders ps . sym
 
 
--- Single point extensions and deletions
--- -------------------------------------
+-- Single point extensions/deletions, shadows and downsets
+-- -------------------------------------------------------
 
 -- | Delete the element at a given position
 del :: Perm a => Int -> a -> a
 del i = generalize $ fromVector . I.del i . toVector
 
 -- | The list of all single point deletions
-shadow :: (Ord a, Perm a) => a -> [a]
-shadow w = map head . group $ sort [ del i w | i <- [0 .. size w - 1]]
+shadow :: (Ord a, Perm a) => [a] -> [a]
+shadow ws = normalize [ del i w | w <- ws, i <- [0 .. size w - 1] ]
+
+-- | The list of permutations that are contained in at least one of
+-- the given permutaions
+downset :: (Ord a, Perm a) => [a] -> [a]
+downset = normalize . concat . downset'
+    where
+      downset' [] = []
+      downset' ws = ws : downset' (shadow ws)
 
 -- | Extend a permutation by inserting a new largest element at the
 -- given position
@@ -374,8 +391,8 @@ ext i = generalize' $ fromVector . ext0 . toVector
             (u,v) = SV.splitAt i w
 
 -- | The list of all single point extensions
-coshadow :: (Ord a, Perm a) => a -> [a]
-coshadow w = map head . group $ sort [ ext i w | i <- [0 .. size w]]
+coshadow :: (Ord a, Perm a) => [a] -> [a]
+coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
 
 
 -- Left-to-right maxima and similar functions
