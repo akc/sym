@@ -15,6 +15,8 @@ module Math.Sym
     (
     -- * Standard permutations
       StPerm
+    , empty
+    , one
     , toVector
     , fromVector
     , toList
@@ -107,6 +109,15 @@ instance Monoid StPerm where
         where
           u' = toVector u
           v' = SV.map ( + size u) $ toVector v
+
+
+-- | The empty permutation.
+empty :: StPerm
+empty = StPerm SV.empty
+
+-- | The one letter permutation.
+one :: StPerm
+one = StPerm $ SV.singleton 0
 
 -- | Convert a standard permutation to a vector.
 toVector :: StPerm -> Vector Int
