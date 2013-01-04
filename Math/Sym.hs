@@ -29,9 +29,10 @@ module Math.Sym
     -- * The permutation typeclass
     , Perm (..)
 
-    -- * Generalize and normalize
+    -- * Generalize, normalize and cast
     , generalize
     , normalize
+    , cast
 
     -- * Generating permutations
     , unrankPerm
@@ -285,8 +286,8 @@ instance Perm [Int] where
     idperm n   = [1..n]
 
 
--- Generalize and normalize
--- ------------------------
+-- Generalize, normalize and cast
+-- ------------------------------
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
 -- 
@@ -303,6 +304,11 @@ normalize xs = map ((`act` idperm n) . head) . group $ sort ys
     where
       ys = map st xs
       n = maximum $ map size ys
+
+-- | Cast a permutation of one type to another
+cast :: (Perm a, Perm b) => a -> b
+cast w = st w `act` idperm (size w)
+
 
 -- Generating permutations
 -- -----------------------
