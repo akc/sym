@@ -15,24 +15,29 @@ module Math.Sym
     (
     -- * Standard permutations
       StPerm
-    , empty
-    , one
-    , toVector
-    , fromVector
     , toList
     , fromList
-    , (/-/)
-    , bijection
-    , unrankStPerm
     , sym
 
     -- * The permutation typeclass
     , Perm (..)
 
-    -- * Generalize, normalize and cast
+    -- * Convenience functions
+    , empty
+    , one
+    , toVector
+    , fromVector
+    , bijection
     , generalize
+    , generalize2
     , normalize
     , cast
+
+    -- * Constructions
+    , (\+\)
+    , directsum
+    , (/-/)
+    , skewsum
 
     -- * Generating permutations
     , unrankPerm
@@ -77,12 +82,12 @@ module Math.Sym
 import Control.Monad (liftM)
 import Data.Ord (comparing)
 import Data.Char (ord)
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..),(<>))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
 import Data.Vector.Storable (Vector)
 import qualified Data.Vector.Storable as SV
-    ( (!), Vector, toList, fromList, fromListN, empty, singleton
+    ( (!), toList, fromList, fromListN, empty, singleton
     , length, map, concat, splitAt
     )
 import qualified Math.Sym.Internal as I
@@ -105,30 +110,12 @@ instance Show StPerm where
     show = show . toVector
 
 instance Monoid StPerm where
-    mempty = fromVector SV.empty
+    mempty = empty
     mappend u v = fromVector $ SV.concat [u', v']
         where
           u' = toVector u
           v' = SV.map ( + size u) $ toVector v
 
-
--- | The empty permutation.
-empty :: StPerm
-empty = StPerm SV.empty
-
--- | The one letter permutation.
-one :: StPerm
-one = StPerm $ SV.singleton 0
-
--- | Convert a standard permutation to a vector.
-toVector :: StPerm -> Vector Int
-toVector = perm0
-
--- | Convert a vector to a standard permutation. The vector should be a
--- permutation of the elements @[0..k-1]@ for some positive @k@. No
--- checks for this are done.
-fromVector :: Vector Int -> StPerm
-fromVector = StPerm
 
 -- | Convert a standard permutation to a list.
 toList :: StPerm -> [Int]
@@ -140,34 +127,12 @@ toList = SV.toList . toVector
 fromList :: [Int] -> StPerm
 fromList = fromVector . SV.fromList
 
-infixl 6 /-/
-
--- | The /skew sum/ of two permutations. (A definition of the
--- /direct sum/ is provided by 'mappend' of the 'Monoid' instance for 'StPerm'.)
-(/-/) :: StPerm -> StPerm -> StPerm
-u /-/ v = fromVector $ SV.concat [u', v']
-    where
-      u' = SV.map ( + size v) $ toVector u
-      v' = toVector v
-
--- | The bijective function defined by a standard permutation.
-bijection :: StPerm -> Int -> Int
-bijection w = (SV.!) (toVector w)
-
--- | @unrankStPerm n rank@ is the @rank@-th (Myrvold & Ruskey)
--- permutation of @[0..n-1]@. E.g.,
--- 
--- > unrankStPerm 16 19028390 == fromList [6,15,4,11,7,8,9,2,5,0,10,3,12,13,14,1]
--- 
-unrankStPerm :: Int -> Integer -> StPerm
-unrankStPerm n = fromVector . I.unrankPerm n
-
 -- | The list of standard permutations of the given size (the symmetric group). E.g.,
 -- 
 -- > sym 2 == [fromList [0,1], fromList [1,0]]
 -- 
 sym :: Int -> [StPerm]
-sym n = map (unrankStPerm n) [0 .. product [1 .. toInteger n] - 1]
+sym = perms
 
 
 -- The permutation typeclass
@@ -293,15 +258,47 @@ instance Perm [Int] where
     idperm n   = [1..n]
 
 
--- Generalize, normalize and cast
--- ------------------------------
+-- Convenience functions
+-- ---------------------
+
+-- | The empty permutation.
+empty :: Perm a => a
+empty = unst $ StPerm SV.empty
+
+-- | The one letter permutation.
+one :: Perm a => a
+one = unst . StPerm $ SV.singleton 0
+
+-- | Convert a permutation to a vector.
+toVector :: Perm a => a -> Vector Int
+toVector = perm0 . st
+
+-- | Convert a vector to a permutation. The vector should be a
+-- permutation of the elements @[0..k-1]@ for some positive @k@. No
+-- checks for this are done.
+fromVector :: Perm a => Vector Int -> a
+fromVector = unst . StPerm
+
+-- | The bijective function defined by a permutation.
+bijection :: StPerm -> Int -> Int
+bijection w = (SV.!) v where v = toVector w
+
+lift :: Perm a => (Vector Int -> Vector Int) -> a -> a
+lift f = fromVector . f . toVector
+
+lift2 :: Perm a => (Vector Int -> Vector Int -> Vector Int) -> a -> a -> a
+lift2 f u v = fromVector $ f (toVector u) (toVector v)
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
 -- 
--- > generalize f = cast . f . st
+-- > generalize f = unst . f . st
 -- 
 generalize :: Perm a => (StPerm -> StPerm) -> a -> a
 generalize f = unst . f . st
+
+-- | Like 'generalize' but for unctions of two variables
+generalize2 :: (Perm a, Perm b, Perm c) => (StPerm -> StPerm -> StPerm) -> a -> b -> c
+generalize2 f u v = unst $ f (st u) (st v)
 
 -- | Sort a list of permutations with respect to the standardization
 -- and remove duplicates
@@ -313,6 +310,30 @@ cast :: (Perm a, Perm b) => a -> b
 cast = unst . st
 
 
+-- Constructions
+-- -------------
+
+infixl 6 \+\
+infixl 6 /-/
+
+-- | The /direct sum/ of two permutations.
+(\+\) :: Perm a => a -> a -> a
+(\+\) = generalize2 (<>)
+
+-- | The /direct sum/ of a list of permutations.
+directsum :: Perm a => [a] -> a
+directsum = foldr (\+\) empty
+
+-- | The /skew sum/ of two permutations.
+(/-/) :: Perm a => a -> a -> a
+(/-/) = lift2 $ \u v -> SV.concat [SV.map ( + SV.length v) u, v]
+
+
+-- | The /skew sum/ of a list of permutations.
+skewsum :: Perm a => [a] -> a
+skewsum = foldr (/-/) empty
+
+
 -- Generating permutations
 -- -----------------------
 
@@ -322,18 +343,18 @@ cast = unst . st
 -- > unrankPerm 9 88888 == "561297843"
 -- 
 unrankPerm :: Perm a => Int -> Integer -> a
-unrankPerm n = unstn n . fromVector . I.unrankPerm n
+unrankPerm n = fromVector . I.unrankPerm n
 
 -- | @randomPerm n@ is a random permutation of size @n@.
 randomPerm :: Perm a => Int -> IO a
-randomPerm n = (unstn n . fromVector . I.fromLehmercode) `liftM` I.randomLehmercode n
+randomPerm n = (fromVector . I.fromLehmercode) `liftM` I.randomLehmercode n
 
 -- | All permutations of a given size. E.g.,
 -- 
 -- > perms 3 == ["123","213","321","132","231","312"]
 -- 
 perms :: Perm a => Int -> [a]
-perms n = map (unstn n) $ sym n
+perms n = map (unrankPerm n) [0 .. product [1 .. toInteger n] - 1]
 
 
 -- Sorting operators
@@ -341,11 +362,11 @@ perms n = map (unstn n) $ sym n
 
 -- | One pass of stack-sort.
 stackSort :: Perm a => a -> a
-stackSort = generalize (fromVector . I.stackSort . toVector)
+stackSort = lift I.stackSort
 
 -- | One pass of bubble-sort.
 bubbleSort :: Perm a => a -> a
-bubbleSort = generalize (fromVector . I.bubbleSort . toVector)
+bubbleSort = lift I.bubbleSort
 
 
 -- Permutation patterns
@@ -386,7 +407,7 @@ av ps = avoiders ps . sym
 
 -- | Delete the element at a given position
 del :: Perm a => Int -> a -> a
-del i = generalize $ fromVector . I.del i . toVector
+del i = fromVector . I.del i . toVector
 
 -- | The list of all single point deletions
 shadow :: (Ord a, Perm a) => [a] -> [a]
@@ -403,7 +424,7 @@ downset = normalize . concat . downset'
 -- | Extend a permutation by inserting a new largest element at the
 -- given position
 ext :: Perm a => Int -> a -> a
-ext i = generalize $ fromVector . ext0 . toVector
+ext i = fromVector . ext0 . toVector
     where
       ext0 w = SV.concat [u, SV.singleton (SV.length w), v]
           where
@@ -459,7 +480,7 @@ simple = I.simple . toVector . st
 
 -- | A set is represented by an increasing vector of non-negative
 -- integers.
-type Set = SV.Vector Int
+type Set = Vector Int
 
 -- A sub-class of 'Bits' used internally. Minimal complete definiton: 'next'.
 class (Bits a, Integral a) => Bitmask a where

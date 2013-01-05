@@ -52,7 +52,7 @@ subperms :: Int -> Sym.StPerm -> [Sym.StPerm]
 subperms k w = [ subperm m w | m <- Sym.subsets (Sym.size w) k ]
 
 instance Arbitrary Sym.StPerm where
-    arbitrary = uncurry Sym.unrankStPerm `liftM` lenRank
+    arbitrary = uncurry Sym.unrankPerm `liftM` lenRank
     shrink w = nub $ [0 .. Sym.size w - 1] >>= \k -> subperms k w
 
 perm :: Gen [Int]
@@ -61,16 +61,16 @@ perm = liftM (\w -> w `Sym.act` [1..Sym.size w]) arbitrary
 perm2 :: Gen (Sym.StPerm, [Int])
 perm2 = do
   (n,r1,r2) <- lenRank2
-  let u = Sym.unrankStPerm n r1
-  let v = Sym.unrankStPerm n r2
+  let u = Sym.unrankPerm n r1
+  let v = Sym.unrankPerm n r2
   return (u, v `Sym.act` [1..n])
 
 perm3 :: Gen (Sym.StPerm, Sym.StPerm, [Int])
 perm3 = do
   (n,r1,r2,r3) <- lenRank3
-  let u = Sym.unrankStPerm n r1
-  let v = Sym.unrankStPerm n r2
-  let w = Sym.unrankStPerm n r3
+  let u = Sym.unrankPerm n r1
+  let v = Sym.unrankPerm n r2
+  let w = Sym.unrankPerm n r3
   return (u, v, w `Sym.act` [1..n])
 
 stPermsOfEqualLength :: Gen [Sym.StPerm]
@@ -78,7 +78,7 @@ stPermsOfEqualLength = sized $ \m -> do
   n  <- choose (0,m)
   k  <- choose (0,m^2)
   rs <- replicateM k $ rank n
-  return $ nub $ map (Sym.unrankStPerm n) rs
+  return $ nub $ map (Sym.unrankPerm n) rs
 
 newtype Symmetry = Symmetry (Sym.StPerm -> Sym.StPerm, String)
 
@@ -124,13 +124,13 @@ instance Monoid S where
 neutralize :: Sym.Perm a => a -> a
 neutralize = Sym.idperm . Sym.size
 
-prop_unrankStPerm_distinct =
+prop_unrankPerm_distinct =
     forAll lenRank $ \(n, r) ->
-        let w = Sym.toList (Sym.unrankStPerm n r) in nub w == w
+        let w = Sym.toList (Sym.unrankPerm n r) in nub w == w
 
-prop_unrankStPerm_injective =
+prop_unrankPerm_injective =
     forAll lenRank2 $ \(n, r1, r2) ->
-        (Sym.unrankStPerm n r1 :: Sym.StPerm) /= Sym.unrankStPerm n r2 || r1 == r2
+        (Sym.unrankPerm n r1 :: Sym.StPerm) /= Sym.unrankPerm n r2 || r1 == r2
 
 prop_sym = and [ sort (Sym.sym n) == sort (sym' n) | n<-[0..6] ]
     where
@@ -252,12 +252,6 @@ simple = null . properIntervals
 
 prop_simple = forAll (resize 40 perm) $ \w -> Sym.simple w == simple w
 
-prop_unrankPerm =
-    forAll perm $ \w ->
-        let n = length w
-        in forAll (choose (0, product [1..fromIntegral n - 1])) $ \r ->
-            Sym.st (Sym.unrankPerm n r :: [Int]) == Sym.unrankStPerm n r
-
 prop_stackSort = forAll perm $ \v -> Sym.stackSort v == stack v
 
 prop_stackSort_231 =
@@ -373,8 +367,8 @@ testsPerm =
     , ("monoid/mempty/1/skew",           check prop_monoid_mempty1_S)
     , ("monoid/mempty/2/skew",           check prop_monoid_mempty2_S)
     , ("monoid/mempty/associative/skew", check prop_monoid_associative_S)
-    , ("unrankStPerm/distinct",          check prop_unrankStPerm_distinct)
-    , ("unrankStPerm/injective",         check prop_unrankStPerm_injective)
+    , ("unrankPerm/distinct",            check prop_unrankPerm_distinct)
+    , ("unrankPerm/injective",           check prop_unrankPerm_injective)
     , ("sym",                            check prop_sym)
     , ("perm",                           check prop_perm)
     , ("st",                             check prop_st)
@@ -401,7 +395,6 @@ testsPerm =
     , ("rMinima/card",                   check prop_rMinima_card)
     , ("components",                     check prop_components)
     , ("skewComponents",                 check prop_skewComponents)
-    , ("unrankPerm",                     check prop_unrankPerm)
     , ("stackSort",                      check prop_stackSort)
     , ("stackSort/231",                  check prop_stackSort_231)
     , ("bubbleSort",                     check prop_bubbleSort)
@@ -431,12 +424,16 @@ fn (Symmetry (f,_)) = f
 
 prop_D8_orbit fs w = all (`elem` orbD8) $ D8.orbit (map fn fs) w
     where
-      orbD8 = D8.orbit D8.d8 w
+      orbD8 = D8.orbit D8.d8 (w :: Sym.StPerm)
 
-prop_D8_reverse w    = I.reverse    (Sym.toVector w) == Sym.toVector (D8.reverse w)
-prop_D8_complement w = I.complement (Sym.toVector w) == Sym.toVector (D8.complement w)
-prop_D8_inverse w    = I.inverse    (Sym.toVector w) == Sym.toVector (D8.inverse w)
-prop_D8_rotate w     = I.rotate     (Sym.toVector w) == Sym.toVector (D8.rotate w)
+prop_D8_reverse =
+    forAll perm $ \w -> I.reverse (Sym.toVector w) == Sym.toVector (D8.reverse w)
+prop_D8_complement =
+    forAll perm $ \w -> I.complement (Sym.toVector w) == Sym.toVector (D8.complement w)
+prop_D8_inverse =
+    forAll perm $ \w -> I.inverse (Sym.toVector w) == Sym.toVector (D8.inverse w)
+prop_D8_rotate =
+    forAll perm $ \w -> I.rotate (Sym.toVector w) == Sym.toVector (D8.rotate w)
 
 -- Auxilary function that partitions a list xs with respect to the
 -- equivalence induced by a function f; i.e. x ~ y iff f x == f y.
