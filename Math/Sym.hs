@@ -35,9 +35,9 @@ module Math.Sym
 
     -- * Constructions
     , (\+\)
-    , directsum
+    , psum
     , (/-/)
-    , skewsum
+    , msum
 
     -- * Generating permutations
     , unrankPerm
@@ -212,9 +212,9 @@ class Perm a where
     unstn n w = w `act` idperm n
 
     -- | The inverse of 'st'. It should hold that
-    -- >
+    -- 
     -- > unst w == unstn (size w) w
-    -- >
+    -- 
     -- and this is the default implementation.
     unst :: Perm a => StPerm -> a
     unst w = unstn (size w) w
@@ -296,7 +296,7 @@ lift2 f u v = fromVector $ f (toVector u) (toVector v)
 generalize :: Perm a => (StPerm -> StPerm) -> a -> a
 generalize f = unst . f . st
 
--- | Like 'generalize' but for unctions of two variables
+-- | Like 'generalize' but for functions of two variables
 generalize2 :: (Perm a, Perm b, Perm c) => (StPerm -> StPerm -> StPerm) -> a -> b -> c
 generalize2 f u v = unst $ f (st u) (st v)
 
@@ -320,18 +320,18 @@ infixl 6 /-/
 (\+\) :: Perm a => a -> a -> a
 (\+\) = generalize2 (<>)
 
--- | The /direct sum/ of a list of permutations.
-directsum :: Perm a => [a] -> a
-directsum = foldr (\+\) empty
+-- | The direct sum of a list of permutations.
+psum :: Perm a => [a] -> a
+psum = foldr (\+\) empty
 
 -- | The /skew sum/ of two permutations.
 (/-/) :: Perm a => a -> a -> a
 (/-/) = lift2 $ \u v -> SV.concat [SV.map ( + SV.length v) u, v]
 
 
--- | The /skew sum/ of a list of permutations.
-skewsum :: Perm a => [a] -> a
-skewsum = foldr (/-/) empty
+-- | The skew sum of a list of permutations.
+msum :: Perm a => [a] -> a
+msum = foldr (/-/) empty
 
 
 -- Generating permutations

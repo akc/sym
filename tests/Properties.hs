@@ -681,18 +681,20 @@ testsStat =
 prop_agrees_with_basis bs cls m =
     and [ sort (Sym.av (map Sym.st bs) n) == sort (cls n) | n<-[0..m] ]
 
-prop_av231 = prop_agrees_with_basis ["231"]        C.av231 7
-prop_vee   = prop_agrees_with_basis ["132", "231"] C.vee   7
-prop_wedge = prop_agrees_with_basis ["213", "312"] C.wedge 7
-prop_gt    = prop_agrees_with_basis ["132", "312"] C.gt    7
-prop_lt    = prop_agrees_with_basis ["213", "231"] C.lt    7
+prop_av231      = prop_agrees_with_basis ["231"]          C.av231      7
+prop_vee        = prop_agrees_with_basis ["132", "231"]   C.vee        7
+prop_wedge      = prop_agrees_with_basis ["213", "312"]   C.wedge      7
+prop_gt         = prop_agrees_with_basis ["132", "312"]   C.gt         7
+prop_lt         = prop_agrees_with_basis ["213", "231"]   C.lt         7
+prop_separables = prop_agrees_with_basis ["2413", "3142"] C.separables 7
 
 testsClass =
-    [ ("av231",        check prop_av231)
-    , ("vee",          check prop_vee)
-    , ("wedge",        check prop_wedge)
-    , ("gt",           check prop_gt)
-    , ("lt",           check prop_lt)
+    [ ("av231",           check prop_av231)
+    , ("vee",             check prop_vee)
+    , ("wedge",           check prop_wedge)
+    , ("gt",              check prop_gt)
+    , ("lt",              check prop_lt)
+    , ("prop_separables", check prop_separables)
     ]
 
 ---------------------------------------------------------------------------------

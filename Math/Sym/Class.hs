@@ -10,10 +10,10 @@
 
 module Math.Sym.Class
     (
-     av231, vee, wedge, gt, lt, vorb
+     av231, vee, wedge, gt, lt, vorb, separables
     ) where
 
-import Math.Sym (Perm, empty, one, (\+\), (/-/), normalize)
+import Math.Sym (Perm, empty, one, (\+\), (/-/), psum, msum, normalize)
 import Math.Sym.D8 as D8
 
 -- | Av(231); also know as the stack sortable permutations.
@@ -61,3 +61,25 @@ union cs n = normalize $ concat [ c n | c <- cs ]
 -- | The union of 'vee', 'wedge', 'gt' and 'lt'; the orbit of a V under rotation
 vorb :: (Ord a, Perm a) => Int -> [a]
 vorb = union [vee, wedge, gt, lt]
+
+compositions :: Int -> Int -> [[Int]]
+compositions 0 0 = [[]]
+compositions 0 _ = []
+compositions _ 0 = []
+compositions k n = [1..n] >>= \i -> map (i:) (compositions (k-1) (n-i))
+
+-- | The class of separable permutations; it is identical to Av(2413,3142).
+separables :: Perm a => Int -> [a]
+separables 0 = [empty]
+separables 1 = [ one ]
+separables n = pIndec n ++ mIndec n
+    where
+      pIndec 0 = []
+      pIndec 1 = [one]
+      pIndec m = comps m >>= map psum . mapM (streamMIndec !!)
+      streamPIndec = map pIndec [0..]
+      mIndec 0 = []
+      mIndec 1 = [one]
+      mIndec m = comps m >>= map msum . mapM (streamPIndec !!)
+      streamMIndec = map mIndec [0..]
+      comps  m = [2..m] >>= \k -> compositions k m
