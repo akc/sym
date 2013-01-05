@@ -11,6 +11,7 @@ import Control.Monad
 import qualified Math.Sym as Sym
 import qualified Math.Sym.D8 as D8
 import qualified Math.Sym.Stat as S
+import qualified Math.Sym.Class as C
 import qualified Math.Sym.Internal as I
 import qualified Data.Vector.Storable as SV
 import Test.QuickCheck
@@ -674,9 +675,32 @@ testsStat =
     ]
 
 ---------------------------------------------------------------------------------
+-- Properties for Math.Sym.Class
+---------------------------------------------------------------------------------
+
+prop_agrees_with_basis bs cls m =
+    and [ sort (Sym.av (map Sym.st bs) n) == sort (cls n) | n<-[0..m] ]
+
+prop_av231 = prop_agrees_with_basis ["231"]        C.av231 7
+prop_vee   = prop_agrees_with_basis ["132", "231"] C.vee   7
+prop_wedge = prop_agrees_with_basis ["213", "312"] C.wedge 7
+prop_gt    = prop_agrees_with_basis ["132", "312"] C.gt    7
+prop_lt    = prop_agrees_with_basis ["213", "231"] C.lt    7
+
+testsClass =
+    [ ("av231",        check prop_av231)
+    , ("vee",          check prop_vee)
+    , ("wedge",        check prop_wedge)
+    , ("gt",           check prop_gt)
+    , ("lt",           check prop_lt)
+    ]
+
+---------------------------------------------------------------------------------
 -- Main
 ---------------------------------------------------------------------------------
 
-tests = testsPerm ++ testsD8 ++ testsStat
+tests = testsPerm ++ testsD8 ++ testsStat ++ testsClass
 
-main = mapM_ (\(name, t) -> putStr (name ++ ":\t") >> t) tests
+runTests = mapM_ (\(name, t) -> putStr (name ++ ":\t") >> t)
+
+main = runTests tests
