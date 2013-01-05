@@ -1,5 +1,5 @@
 Name:                sym
-Version:             0.5.1
+Version:             0.5.2
 Synopsis:            Permutations, patterns, and statistics
 Description:         
   Definitions for permutations with an emphasis on permutation
@@ -14,6 +14,8 @@ Description:
   .
   ["Math.Sym.Stat"] Common permutation statistics, such as @des@,
   @inv@, @exc@, @maj@, @fp@, @comp@, @lmin@, @lmax@, ...
+  .
+  ["Math.Sym.Class"] Common permutation classes.
 
 Homepage:            http://github.com/akc/sym
 
