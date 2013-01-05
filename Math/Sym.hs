@@ -212,28 +212,14 @@ class Perm a where
     -- | The identity permutation of the given size.
     idperm :: Int -> a
 
-    -- | The permutation obtained by acting on the given permutation
-    -- with its own inverse; that is, the identity permutation on the
-    -- same underlying set as the given permutation. It should hold
-    -- that
-    -- 
-    -- > st (neutralize u) == neutralize (st u)
-    -- > neutralize u == inverse (st u) `act` u
-    -- > neutralize u == idperm (size u)
-    -- 
-    -- The default implementation uses the last of these three equations.
-    {-# INLINE neutralize #-}
-    neutralize :: a -> a
-    neutralize = idperm . size
-
     -- | The group theoretical inverse. It should hold that
     -- 
-    -- > inverse u == inverse (st u) `act` neutralize u
+    -- > inverse == unst . inverse . st
     -- 
     -- and this is the default implementation.
     {-# INLINE inverse #-}
     inverse :: a -> a
-    inverse u = inverse (st u) `act` neutralize u
+    inverse = unst . inverse . st
 
     -- | Predicate determining if two permutations are
     -- order-isomorphic. The default implementation uses
@@ -242,11 +228,31 @@ class Perm a where
     -- 
     -- Equivalently, one could use
     -- 
-    -- > u `ordiso` v  ==  inverse u `act` v == neutralize v
+    -- > u `ordiso` v  ==  inverse u `act` v == idperm (size u)
     -- 
     {-# INLINE ordiso #-}
     ordiso :: StPerm -> a -> Bool
     ordiso u v = u == st v
+
+    -- | The inverse of the standardization function. For efficiency
+    -- reasons we make the size of the permutation an argument to this
+    -- function. It should hold that
+    -- 
+    -- > unst n w == w `act` idperm n
+    -- 
+    -- and this is the default implementation. An un-standardization
+    -- function without the size argument is given by 'unst' below.
+    {-# INLINE unstn #-}
+    unstn :: Int -> StPerm -> a
+    unstn n w = w `act` idperm n
+
+    -- | The inverse of 'st'. It should hold that
+    -- >
+    -- > unst w == unstn (size w) w
+    -- >
+    -- and this is the default implementation.
+    unst :: Perm a => StPerm -> a
+    unst w = unstn (size w) w
 
 instance Perm StPerm where
     st         = id
@@ -255,6 +261,7 @@ instance Perm StPerm where
     idperm     = fromVector . I.idperm
     inverse    = fromVector . I.inverse . toVector
     ordiso     = (==)
+    unstn _    = id
 
 -- Auxiliary function: @w = act' u v@ iff @w[u[i]] = v[i]@.
 -- Caveat: @act'@ is not a proper group action.
@@ -274,14 +281,14 @@ stString = fromList . map f
 instance Perm String where
     st         = stString
     act        = actL
-    inverse v  = act' v (neutralize v)
+    inverse v  = act' v (idperm (size v))
     size       = length
     idperm n   = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
 
 instance Perm [Int] where
     st         = fromList . map (+(-1))
     act        = actL
-    inverse v  = act' v (neutralize v)
+    inverse v  = act' v (idperm (size v))
     size       = length
     idperm n   = [1..n]
 
@@ -291,23 +298,19 @@ instance Perm [Int] where
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
 -- 
--- > generalize f v = f (st v) `act` neutralize v
+-- > generalize f = cast . f . st
 -- 
--- Note that this will only work as intended if @f@ is size preserving.
 generalize :: Perm a => (StPerm -> StPerm) -> a -> a
-generalize f v = f (st v) `act` neutralize v
+generalize f = unst . f . st
 
 -- | Sort a list of permutations with respect to the standardization
 -- and remove duplicates
 normalize :: (Ord a, Perm a) => [a] -> [a]
-normalize xs = map ((`act` idperm n) . head) . group $ sort ys
-    where
-      ys = map st xs
-      n = maximum $ map size ys
+normalize = map (unst . head) . group . sort . map st
 
 -- | Cast a permutation of one type to another
 cast :: (Perm a, Perm b) => a -> b
-cast w = st w `act` idperm (size w)
+cast = unst . st
 
 
 -- Generating permutations
@@ -319,18 +322,18 @@ cast w = st w `act` idperm (size w)
 -- > unrankPerm 9 88888 == "561297843"
 -- 
 unrankPerm :: Perm a => Int -> Integer -> a
-unrankPerm n = (`act` idperm n) . fromVector . I.unrankPerm n
+unrankPerm n = unstn n . fromVector . I.unrankPerm n
 
 -- | @randomPerm n@ is a random permutation of size @n@.
 randomPerm :: Perm a => Int -> IO a
-randomPerm n = ((`act` idperm n) . fromVector . I.fromLehmercode) `liftM` I.randomLehmercode n
+randomPerm n = (unstn n . fromVector . I.fromLehmercode) `liftM` I.randomLehmercode n
 
 -- | All permutations of a given size. E.g.,
 -- 
 -- > perms 3 == ["123","213","321","132","231","312"]
 -- 
 perms :: Perm a => Int -> [a]
-perms n = map (`act` idperm n) $ sym n
+perms n = map (unstn n) $ sym n
 
 
 -- Sorting operators
@@ -400,9 +403,8 @@ downset = normalize . concat . downset'
 -- | Extend a permutation by inserting a new largest element at the
 -- given position
 ext :: Perm a => Int -> a -> a
-ext i = generalize' $ fromVector . ext0 . toVector
+ext i = generalize $ fromVector . ext0 . toVector
     where
-      generalize' f w = f (st w) `act` idperm (1+size w)
       ext0 w = SV.concat [u, SV.singleton (SV.length w), v]
           where
             (u,v) = SV.splitAt i w

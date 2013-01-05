@@ -121,6 +121,9 @@ instance Monoid S where
     mempty = S $ Sym.fromVector SV.empty
     mappend u v = S $ (Sym./-/) (unS u) (unS v)
 
+neutralize :: Sym.Perm a => a -> a
+neutralize = Sym.idperm . Sym.size
+
 prop_unrankStPerm_distinct =
     forAll lenRank $ \(n, r) ->
         let w = Sym.toList (Sym.unrankStPerm n r) in nub w == w
@@ -143,7 +146,7 @@ prop_act_def =
     forAll perm2 $ \(u,v) -> u `Sym.act` v == map (v!!) (Sym.toList u)
 
 prop_act_id =
-    forAll perm2 $ \(u,v) -> Sym.neutralize u `Sym.act` v == v
+    forAll perm2 $ \(u,v) -> neutralize u `Sym.act` v == v
 
 prop_act_associative =
     forAll perm3 $ \(u,v,w) -> (u `Sym.act` v) `Sym.act` w == u `Sym.act` (v `Sym.act` w)
@@ -152,16 +155,16 @@ prop_size =
     forAll perm $ \v -> Sym.size v == Sym.size (Sym.st v)
 
 prop_neutralize =
-    forAll perm2 $ \(u,v) -> Sym.neutralize u == Sym.inverse (Sym.st u) `Sym.act` u
+    forAll perm2 $ \(u,v) -> neutralize u == Sym.inverse (Sym.st u) `Sym.act` u
 
 prop_inverse =
-    forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` Sym.neutralize v
+    forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` neutralize v
 
 prop_ordiso1 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
 
 prop_ordiso2 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == Sym.neutralize v)
+    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == neutralize v)
 
 shadow :: Ord a => [a] -> [[a]]
 shadow w = nubsort . map normalize $ ptDeletions w
@@ -259,13 +262,13 @@ prop_stackSort = forAll perm $ \v -> Sym.stackSort v == stack v
 
 prop_stackSort_231 =
     forAll perm $ \v ->
-        (Sym.stackSort v == Sym.neutralize v) == (v `Sym.avoids` [Sym.st "231"])
+        (Sym.stackSort v == neutralize v) == (v `Sym.avoids` [Sym.st "231"])
 
 prop_bubbleSort = forAll perm $ \v -> Sym.bubbleSort v == bubble v
 
 prop_bubbleSort_231_321 =
     forAll perm $ \v ->
-        (Sym.bubbleSort v == Sym.neutralize v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
+        (Sym.bubbleSort v == neutralize v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
 
 prop_subperm_copies p =
     forAll (resize 21 perm) $ \w -> and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
