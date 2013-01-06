@@ -35,6 +35,7 @@ module Math.Sym.Internal
     , toList
     , fromList
     , act
+    , inflate
     , unrankPerm
     , randomPerm
     , sym
@@ -109,10 +110,10 @@ import qualified Prelude (head)
 import System.Random (getStdRandom, randomR)
 import Control.Monad (forM_, liftM)
 import Control.Monad.ST (runST)
-import Data.List (group)
+import Data.List (group, sort)
 import Data.Bits (Bits, shiftR, (.|.), (.&.), popCount)
 import qualified Data.Vector.Storable as SV
-    ( Vector, toList, fromList, length, (!), thaw
+    ( Vector, toList, fromList, length, (!), thaw, concat
     , unsafeFreeze, unsafeWith, enumFromN, enumFromStepN
     , head, last, filter, maximum, minimum, null, reverse, map
     )
@@ -190,6 +191,14 @@ act u v = runST $ do
   w <- MV.unsafeNew n
   forM_ [0..n-1] $ \i -> MV.unsafeWrite w i ((SV.!) v ((SV.!) u i))
   SV.unsafeFreeze w
+
+-- | @inflate w vs@ is the /inflation/ of @w@ by @vs@.
+inflate :: Perm0 -> [Perm0] -> Perm0
+inflate w vs = SV.concat . map snd . sort $ zipWith3 f w' cs us
+    where
+      f i c u = (i, SV.map (+c) u)
+      (_, w', us) = unzip3 . sort $ zip3 (SV.toList w) [0 :: Int .. ] vs
+      cs = scanl (\i u -> i + SV.length u) 0 us
 
 factorial :: Integral a => a -> Integer
 factorial = product . enumFromTo 1 . toInteger 

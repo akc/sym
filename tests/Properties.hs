@@ -220,6 +220,26 @@ prop_components = (components . st) `forAllPermEq` (SV.toList . Sym.components)
 
 prop_skewComponents = (skewComponents . st) `forAllPermEq` (SV.toList . Sym.skewComponents)
 
+prop_dsum = forAll perm $ \u ->
+            forAll perm $ \v -> (Sym.\+\) u v == Sym.inflate [1,2] [u,v]
+
+prop_ssum = forAll perm $ \u ->
+            forAll perm $ \v -> (Sym./-/) u v == Sym.inflate [2,1] [u,v]
+
+inflate :: [Int] -> [[Int]] -> [Int]
+inflate w vs = concat . map snd $ sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ]
+    where
+      (_, w',us) = unzip3 . sort $ zip3 w [0..] vs
+      cs = scanl (\i u -> i + length u) 0 us
+
+prop_inflate =
+    forAll perm $ \u0 ->
+    forAll perm $ \u1 ->
+    forAll perm $ \u2 ->
+    forAll perm $ \u3 ->
+        let us = [u0, u1, u2, u3]
+        in and [ inflate w us == Sym.inflate w us | w <- permutations [1..4] ]
+
 segments :: [a] -> [[a]]
 segments [] = [[]]
 segments (x:xs) = segments xs ++ map (x:) (inits xs)
@@ -386,6 +406,9 @@ testsPerm =
     , ("rMaxima/card",                   check prop_rMaxima_card)
     , ("rMinima/card",                   check prop_rMinima_card)
     , ("components",                     check prop_components)
+    , ("dsum",                           check prop_dsum)
+    , ("ssum",                           check prop_ssum)
+    , ("inflate",                        check prop_inflate)
     , ("skewComponents",                 check prop_skewComponents)
     , ("stackSort",                      check prop_stackSort)
     , ("stackSort/231",                  check prop_stackSort_231)

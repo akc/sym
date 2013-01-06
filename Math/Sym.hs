@@ -35,9 +35,10 @@ module Math.Sym
 
     -- * Constructions
     , (\+\)
-    , psum
+    , dsum
     , (/-/)
-    , msum
+    , ssum
+    , inflate
 
     -- * Generating permutations
     , unrankPerm
@@ -317,17 +318,28 @@ infixl 6 /-/
 (\+\) = generalize2 (<>)
 
 -- | The direct sum of a list of permutations.
-psum :: Perm a => [a] -> a
-psum = foldr (\+\) empty
+dsum :: Perm a => [a] -> a
+dsum = foldr (\+\) empty
 
 -- | The /skew sum/ of two permutations.
 (/-/) :: Perm a => a -> a -> a
 (/-/) = lift2 $ \u v -> SV.concat [SV.map ( + SV.length v) u, v]
 
-
 -- | The skew sum of a list of permutations.
-msum :: Perm a => [a] -> a
-msum = foldr (/-/) empty
+ssum :: Perm a => [a] -> a
+ssum = foldr (/-/) empty
+
+-- | @inflate w vs@ is the /inflation/ of @w@ by @vs@. It is the
+-- permutation of length @sum (map size vs)@ obtained by replacing
+-- each entry @w!i@ by an interval that is order isomorphic to @vs!i@
+-- in such a way that the intervals are order isomorphic to @w@. In
+-- particular,
+-- 
+-- > u \+\ v == inflate (fromList [0,1]) [u,v]
+-- > u /-/ v == inflate (fromList [1,0]) [u,v]
+-- 
+inflate :: Perm a => a -> [a] -> a
+inflate w vs = lift (\v -> I.inflate v (map toVector vs)) w
 
 
 -- Generating permutations

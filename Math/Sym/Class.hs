@@ -13,7 +13,7 @@ module Math.Sym.Class
      av231, vee, wedge, gt, lt, vorb, separables
     ) where
 
-import Math.Sym (Perm, empty, one, (\+\), (/-/), psum, msum, normalize)
+import Math.Sym (Perm, empty, one, (\+\), (/-/), dsum, ssum, normalize)
 import Math.Sym.D8 as D8
 
 -- | Av(231); also know as the stack sortable permutations.
@@ -76,10 +76,10 @@ separables n = pIndec n ++ mIndec n
     where
       pIndec 0 = []
       pIndec 1 = [one]
-      pIndec m = comps m >>= map psum . mapM (streamMIndec !!)
+      pIndec m = comps m >>= map ssum . mapM (streamMIndec !!)
       streamPIndec = map pIndec [0..]
       mIndec 0 = []
       mIndec 1 = [one]
-      mIndec m = comps m >>= map msum . mapM (streamPIndec !!)
+      mIndec m = comps m >>= map dsum . mapM (streamPIndec !!)
       streamMIndec = map mIndec [0..]
       comps  m = [2..m] >>= \k -> compositions k m
