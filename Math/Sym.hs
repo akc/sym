@@ -280,10 +280,11 @@ fromVector = unst . StPerm
 bijection :: StPerm -> Int -> Int
 bijection w = (SV.!) v where v = toVector w
 
-lift :: Perm a => (Vector Int -> Vector Int) -> a -> a
+lift :: (Perm a, Perm b) => (Vector Int -> Vector Int) -> a -> b
 lift f = fromVector . f . toVector
 
-lift2 :: Perm a => (Vector Int -> Vector Int -> Vector Int) -> a -> a -> a
+lift2 :: (Perm a, Perm b, Perm c) =>
+         (Vector Int -> Vector Int -> Vector Int) -> a -> b -> c
 lift2 f u v = fromVector $ f (toVector u) (toVector v)
 
 -- | Generalize a function on 'StPerm' to a function on any permutations:
@@ -338,7 +339,7 @@ ssum = foldr (/-/) empty
 -- > u \+\ v == inflate (fromList [0,1]) [u,v]
 -- > u /-/ v == inflate (fromList [1,0]) [u,v]
 -- 
-inflate :: Perm a => a -> [a] -> a
+inflate :: (Perm a, Perm b) => b -> [a] -> a
 inflate w vs = lift (\v -> I.inflate v (map toVector vs)) w
 
 

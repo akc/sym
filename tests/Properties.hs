@@ -221,10 +221,10 @@ prop_components = (components . st) `forAllPermEq` (SV.toList . Sym.components)
 prop_skewComponents = (skewComponents . st) `forAllPermEq` (SV.toList . Sym.skewComponents)
 
 prop_dsum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym.\+\) u v == Sym.inflate [1,2] [u,v]
+            forAll perm $ \v -> (Sym.\+\) u v == Sym.inflate "12" [u,v]
 
 prop_ssum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym./-/) u v == Sym.inflate [2,1] [u,v]
+            forAll perm $ \v -> (Sym./-/) u v == Sym.inflate "21" [u,v]
 
 inflate :: [Int] -> [[Int]] -> [Int]
 inflate w vs = concat . map snd $ sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ]
@@ -348,12 +348,12 @@ copies p w = [ is | js <- u, let (is, q) = unzip (f js (zip [0..] w)), st q == p
       f _       _         = []
 
 prop_subsets1 =
-    forAll (choose (0,14)) $ \n ->
-    forAll (choose (0,14)) $ \k ->
+    forAll (choose (0,13)) $ \n ->
+    forAll (choose (0,13)) $ \k ->
         sort (kSubsequences k [0..n-1]) == sort (map SV.toList $ Sym.subsets n k)
 
 prop_subsets2 =
-    forAll (choose (0,35)) $ \n ->
+    forAll (choose (0,33)) $ \n ->
     forAll (choose (0,3))  $ \k ->
         sort (kSubsequences k [0..n-1]) == sort (map SV.toList $ Sym.subsets n k)
 
@@ -362,13 +362,13 @@ prop_subsets_singleton =
         let [v] = Sym.subsets n n in SV.toList v == [0..n-1]
 
 prop_subsets_cardinality1 =
-    forAll (choose (0,20)) $ \n ->
-    forAll (choose (0,20)) $ \k ->
+    forAll (choose (0,16)) $ \n ->
+    forAll (choose (0,16)) $ \k ->
         length (Sym.subsets n k) == binomial n k
 
 prop_subsets_cardinality2 =
-    forAll (choose (0,20)) $ \n ->
-    forAll (choose (0,20)) $ \k ->
+    forAll (choose (0,16)) $ \n ->
+    forAll (choose (0,16)) $ \k ->
         let cs = map SV.length (Sym.subsets n k)
         in ((k > n) && null cs) || ([k] == nub cs)
 
@@ -651,7 +651,8 @@ prop_dim    = forAllPermEq dim   S.dim
 prop_asc0   = forAllPermEq asc0  S.asc0
 prop_des0   = forAllPermEq des0  S.des0
 prop_shad   = forAllPermEq shad  S.shad
-prop_inv_21 = forAllPermEq S.inv (length . Sym.copiesOf (Sym.st "21"))
+prop_inv_21 = forAll (resize 30 perm) $ \w ->
+              S.inv w == (length . Sym.copiesOf (Sym.st "21")) w
 
 testsStat =
     [ ("asc",          check prop_asc)
