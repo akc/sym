@@ -124,6 +124,8 @@ instance Monoid S where
 neutralize :: Sym.Perm a => a -> a
 neutralize = Sym.idperm . Sym.size
 
+forAllPermEq f g = forAll perm $ \w -> f w == g w
+
 prop_unrankPerm_distinct =
     forAll lenRank $ \(n, r) ->
         let w = Sym.toList (Sym.unrankPerm n r) in nub w == w
@@ -151,20 +153,19 @@ prop_act_id =
 prop_act_associative =
     forAll perm3 $ \(u,v,w) -> (u `Sym.act` v) `Sym.act` w == u `Sym.act` (v `Sym.act` w)
 
-prop_size =
-    forAll perm $ \v -> Sym.size v == Sym.size (Sym.st v)
+prop_size = Sym.size `forAllPermEq` (Sym.size . Sym.st)
 
-prop_neutralize =
-    forAll perm2 $ \(u,v) -> neutralize u == Sym.inverse (Sym.st u) `Sym.act` u
+prop_neutralize = neutralize `forAllPermEq` (\u -> Sym.inverse (Sym.st u) `Sym.act` u)
 
 prop_inverse =
-    forAll perm $ \v -> Sym.inverse v == Sym.inverse (Sym.st v) `Sym.act` neutralize v
+    forAllPermEq Sym.inverse $ \v -> Sym.inverse (Sym.st v) `Sym.act` neutralize v
 
 prop_ordiso1 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
 
 prop_ordiso2 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == neutralize v)
+    forAll perm2 $ \(u,v) ->
+        u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == neutralize v)
 
 shadow :: Ord a => [a] -> [[a]]
 shadow w = nubsort . map normalize $ ptDeletions w
@@ -194,30 +195,20 @@ coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
 
 prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
-prop_record f g =
+recordIndicesAgree f g =
     forAll perm $ \w -> SV.fromList (recordIndices w) == f w
         where
           recordIndices w = [ head $ elemIndices x w | x <- g w ]
 
-prop_lMaxima = prop_record Sym.lMaxima lMaxima
+prop_lMaxima = recordIndicesAgree Sym.lMaxima lMaxima
+prop_lMinima = recordIndicesAgree Sym.lMinima lMinima
+prop_rMaxima = recordIndicesAgree Sym.rMaxima rMaxima
+prop_rMinima = recordIndicesAgree Sym.rMinima rMinima
 
-prop_lMinima = prop_record Sym.lMinima lMinima
-
-prop_rMaxima = prop_record Sym.rMaxima rMaxima
-
-prop_rMinima = prop_record Sym.rMinima rMinima
-
-prop_lMaxima_card =
-    forAll perm $ \w -> S.lmax w == SV.length (Sym.lMaxima w)
-
-prop_lMinima_card =
-    forAll perm $ \w -> S.lmin w == SV.length (Sym.lMinima w)
-
-prop_rMaxima_card =
-    forAll perm $ \w -> S.rmax w == SV.length (Sym.rMaxima w)
-
-prop_rMinima_card =
-    forAll perm $ \w -> S.rmin w == SV.length (Sym.rMinima w)
+prop_lMaxima_card = S.lmax `forAllPermEq` (SV.length . Sym.lMaxima)
+prop_lMinima_card = S.lmin `forAllPermEq` (SV.length . Sym.lMinima)
+prop_rMaxima_card = S.rmax `forAllPermEq` (SV.length . Sym.rMaxima)
+prop_rMinima_card = S.rmin `forAllPermEq` (SV.length . Sym.rMinima)
 
 -- The list of indices of components in a permutation
 components w = lMaxima w `cap` rMinima (bubble w)
@@ -225,11 +216,9 @@ components w = lMaxima w `cap` rMinima (bubble w)
 -- The list of indices of skew components in a permutation
 skewComponents w = components $ map (\x -> length w - x - 1) w
 
-prop_components =
-    forAll perm $ \w -> components (st w) == SV.toList (Sym.components w)
+prop_components = (components . st) `forAllPermEq` (SV.toList . Sym.components)
 
-prop_skewComponents =
-    forAll perm $ \w -> skewComponents (st w) == SV.toList (Sym.skewComponents w)
+prop_skewComponents = (skewComponents . st) `forAllPermEq` (SV.toList . Sym.skewComponents)
 
 segments :: [a] -> [[a]]
 segments [] = [[]]
@@ -252,20 +241,20 @@ simple = null . properIntervals
 
 prop_simple = forAll (resize 40 perm) $ \w -> Sym.simple w == simple w
 
-prop_stackSort = forAll perm $ \v -> Sym.stackSort v == stack v
+prop_stackSort = Sym.stackSort `forAllPermEq` stack
 
 prop_stackSort_231 =
-    forAll perm $ \v ->
-        (Sym.stackSort v == neutralize v) == (v `Sym.avoids` [Sym.st "231"])
+  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` [Sym.st "231"])
 
-prop_bubbleSort = forAll perm $ \v -> Sym.bubbleSort v == bubble v
+prop_bubbleSort = Sym.bubbleSort `forAllPermEq` bubble
 
-prop_bubbleSort_231_321 =
-    forAll perm $ \v ->
-        (Sym.bubbleSort v == neutralize v) == (v `Sym.avoids` [Sym.st "231", Sym.st "321"])
+prop_bubbleSort_231_321 = forAllPermEq f g
+    where f v = Sym.bubbleSort v == neutralize v
+          g v = v `Sym.avoids` [Sym.st "231", Sym.st "321"]
 
 prop_subperm_copies p =
-    forAll (resize 21 perm) $ \w -> and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
+    forAll (resize 21 perm) $ \w ->
+        and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
 
 prop_copies =
     forAll (resize  6 arbitrary) $ \p ->
@@ -279,7 +268,7 @@ prop_copies_d8 (Symmetry (f,_)) =
     forAll (resize  6 arbitrary) $ \p ->
     forAll (resize 20 perm)      $ \w ->
         let p' = f p
-            w' = Sym.generalize f w
+            w' = Sym.generalize f w :: [Int]
         in length (Sym.copiesOf p w) == length (Sym.copiesOf p' w')
 
 prop_avoiders_avoid =
@@ -295,12 +284,14 @@ prop_avoiders_idempotent =
 prop_avoiders_d8 (Symmetry (f,_)) =
     forAll (choose (0, 5))      $ \n ->
     forAll (resize 5 arbitrary) $ \p ->
-        let ws = Sym.sym n in sort (map f $ Sym.avoiders [p] ws) == sort (Sym.avoiders [f p] ws)
+        let ws = Sym.sym n
+        in sort (map f $ Sym.avoiders [p] ws) == sort (Sym.avoiders [f p] ws)
 
 prop_avoiders_d8' (Symmetry (f,_)) =
     forAll (choose (0, 5))      $ \n ->
     forAll (resize 5 arbitrary) $ \ps ->
-        let ws = Sym.sym n in sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws))
+        let ws = Sym.sym n
+        in sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws))
 
 prop_avoiders_d8'' (Symmetry (f,_)) =
     forAll (resize 18 arbitrary) $ \ws ->
@@ -358,7 +349,8 @@ prop_subsets_cardinality1 =
 prop_subsets_cardinality2 =
     forAll (choose (0,20)) $ \n ->
     forAll (choose (0,20)) $ \k ->
-        let cs = map SV.length (Sym.subsets n k) in ((k > n) && null cs) || ([k] == nub cs)
+        let cs = map SV.length (Sym.subsets n k)
+        in ((k > n) && null cs) || ([k] == nub cs)
 
 testsPerm =
     [ ("monoid/mempty/1",                check prop_monoid_mempty1)
@@ -426,14 +418,12 @@ prop_D8_orbit fs w = all (`elem` orbD8) $ D8.orbit (map fn fs) w
     where
       orbD8 = D8.orbit D8.d8 (w :: Sym.StPerm)
 
-prop_D8_reverse =
-    forAll perm $ \w -> I.reverse (Sym.toVector w) == Sym.toVector (D8.reverse w)
-prop_D8_complement =
-    forAll perm $ \w -> I.complement (Sym.toVector w) == Sym.toVector (D8.complement w)
-prop_D8_inverse =
-    forAll perm $ \w -> I.inverse (Sym.toVector w) == Sym.toVector (D8.inverse w)
-prop_D8_rotate =
-    forAll perm $ \w -> I.rotate (Sym.toVector w) == Sym.toVector (D8.rotate w)
+symmetriesAgrees f g = (f . Sym.toVector) `forAllPermEq` (Sym.toVector . g)
+
+prop_D8_reverse    = symmetriesAgrees I.reverse    D8.reverse
+prop_D8_complement = symmetriesAgrees I.complement D8.complement
+prop_D8_inverse    = symmetriesAgrees I.inverse    D8.inverse
+prop_D8_rotate     = symmetriesAgrees I.rotate     D8.rotate
 
 -- Auxilary function that partitions a list xs with respect to the
 -- equivalence induced by a function f; i.e. x ~ y iff f x == f y.
@@ -447,15 +437,15 @@ eqClasses f xs = (map . map) snd . group' $ sort' [ (f x, x) | x <- xs ]
 symmetryClasses :: (Ord a, Sym.Perm a) => [a -> a] -> [a] -> [[a]]
 symmetryClasses fs xs = sort . map sort $ eqClasses (D8.orbit fs) xs
 
-prop_symmetryClasses fs =
+symmetryClassesByGroup fs =
     forAll (resize 10 stPermsOfEqualLength) $ \ws ->
         symmetryClasses fs ws == D8.symmetryClasses fs ws
 
-prop_symmetryClasses_d8     = prop_symmetryClasses D8.d8
-prop_symmetryClasses_klein4 = prop_symmetryClasses D8.klein4
-prop_symmetryClasses_ei     = prop_symmetryClasses [D8.id, D8.inverse]
-prop_symmetryClasses_er     = prop_symmetryClasses [D8.id, D8.reverse]
-prop_symmetryClasses_ec     = prop_symmetryClasses [D8.id, D8.complement]
+prop_symmetryClasses_d8     = symmetryClassesByGroup D8.d8
+prop_symmetryClasses_klein4 = symmetryClassesByGroup D8.klein4
+prop_symmetryClasses_ei     = symmetryClassesByGroup [D8.id, D8.inverse]
+prop_symmetryClasses_er     = symmetryClassesByGroup [D8.id, D8.reverse]
+prop_symmetryClasses_ec     = symmetryClassesByGroup [D8.id, D8.complement]
 
 testsD8 =
     [ ("D8/orbit",                   check prop_D8_orbit)
@@ -609,37 +599,36 @@ dasc = length . doubleAscents
 ddes = length . doubleDescents
 shad = length . shadow
 
-prop_asc   = forAll perm $ \w -> asc   w == S.asc   w
-prop_des   = forAll perm $ \w -> des   w == S.des   w
-prop_exc   = forAll perm $ \w -> exc   w == S.exc   w
-prop_fp    = forAll perm $ \w -> fp    w == S.fp    w
-prop_cyc   = forAll perm $ \w -> cyc   w == S.cyc   w
-prop_inv   = forAll perm $ \w -> inv   w == S.inv   w
-prop_maj   = forAll perm $ \w -> maj   w == S.maj   w
-prop_comaj = forAll perm $ \w -> comaj w == S.comaj w
-prop_lmin  = forAll perm $ \w -> lmin  w == S.lmin  w
-prop_lmax  = forAll perm $ \w -> lmax  w == S.lmax  w
-prop_rmin  = forAll perm $ \w -> rmin  w == S.rmin  w
-prop_rmax  = forAll perm $ \w -> rmax  w == S.rmax  w
-prop_head  = forAll perm $ \w -> not (null w) ==> head w == 1 + S.head w
-prop_last  = forAll perm $ \w -> not (null w) ==> last w == 1 + S.last w
-prop_peak  = forAll perm $ \w -> peak  w == S.peak  w
-prop_vall  = forAll perm $ \w -> vall  w == S.vall  w
-prop_dasc  = forAll perm $ \w -> dasc  w == S.dasc  w
-prop_ddes  = forAll perm $ \w -> ddes  w == S.ddes  w
-prop_ep    = forAll perm $ \w -> ep    w == S.ep    w
-prop_lir   = forAll perm $ \w -> lir   w == S.lir   w
-prop_ldr   = forAll perm $ \w -> ldr   w == S.ldr   w
-prop_rir   = forAll perm $ \w -> rir   w == S.rir   w
-prop_rdr   = forAll perm $ \w -> rdr   w == S.rdr   w
-prop_comp  = forAll perm $ \w -> comp  w == S.comp  w
-prop_scomp = forAll perm $ \w -> scomp w == S.scomp w
-prop_dim   = forAll perm $ \w -> dim   w == S.dim   w
-prop_asc0  = forAll perm $ \w -> asc0  w == S.asc0  w
-prop_des0  = forAll perm $ \w -> des0  w == S.des0  w
-prop_shad  = forAll perm $ \w -> shad  w == S.shad  w
-
-prop_inv_21 = forAll perm $ \w -> S.inv w == length (Sym.copiesOf (Sym.st "21") w)
+prop_asc    = forAllPermEq asc   S.asc
+prop_des    = forAllPermEq des   S.des
+prop_exc    = forAllPermEq exc   S.exc
+prop_fp     = forAllPermEq fp    S.fp
+prop_cyc    = forAllPermEq cyc   S.cyc
+prop_inv    = forAllPermEq inv   S.inv
+prop_maj    = forAllPermEq maj   S.maj
+prop_comaj  = forAllPermEq comaj S.comaj
+prop_lmin   = forAllPermEq lmin  S.lmin
+prop_lmax   = forAllPermEq lmax  S.lmax
+prop_rmin   = forAllPermEq rmin  S.rmin
+prop_rmax   = forAllPermEq rmax  S.rmax
+prop_head   = forAll perm $ \w -> not (null w) ==> head w == 1 + S.head w
+prop_last   = forAll perm $ \w -> not (null w) ==> last w == 1 + S.last w
+prop_peak   = forAllPermEq peak  S.peak
+prop_vall   = forAllPermEq vall  S.vall
+prop_dasc   = forAllPermEq dasc  S.dasc
+prop_ddes   = forAllPermEq ddes  S.ddes
+prop_ep     = forAllPermEq ep    S.ep
+prop_lir    = forAllPermEq lir   S.lir
+prop_ldr    = forAllPermEq ldr   S.ldr
+prop_rir    = forAllPermEq rir   S.rir
+prop_rdr    = forAllPermEq rdr   S.rdr
+prop_comp   = forAllPermEq comp  S.comp
+prop_scomp  = forAllPermEq scomp S.scomp
+prop_dim    = forAllPermEq dim   S.dim
+prop_asc0   = forAllPermEq asc0  S.asc0
+prop_des0   = forAllPermEq des0  S.des0
+prop_shad   = forAllPermEq shad  S.shad
+prop_inv_21 = forAllPermEq S.inv (length . Sym.copiesOf (Sym.st "21"))
 
 testsStat =
     [ ("asc",          check prop_asc)
@@ -678,23 +667,23 @@ testsStat =
 -- Properties for Math.Sym.Class
 ---------------------------------------------------------------------------------
 
-prop_agrees_with_basis bs cls m =
+agreesWithBasis bs cls m =
     and [ sort (Sym.av (map Sym.st bs) n) == sort (cls n) | n<-[0..m] ]
 
-prop_av231      = prop_agrees_with_basis ["231"]          C.av231      7
-prop_vee        = prop_agrees_with_basis ["132", "231"]   C.vee        7
-prop_wedge      = prop_agrees_with_basis ["213", "312"]   C.wedge      7
-prop_gt         = prop_agrees_with_basis ["132", "312"]   C.gt         7
-prop_lt         = prop_agrees_with_basis ["213", "231"]   C.lt         7
-prop_separables = prop_agrees_with_basis ["2413", "3142"] C.separables 7
+prop_av231      = agreesWithBasis ["231"]          C.av231      7
+prop_vee        = agreesWithBasis ["132", "231"]   C.vee        7
+prop_wedge      = agreesWithBasis ["213", "312"]   C.wedge      7
+prop_gt         = agreesWithBasis ["132", "312"]   C.gt         7
+prop_lt         = agreesWithBasis ["213", "231"]   C.lt         7
+prop_separables = agreesWithBasis ["2413", "3142"] C.separables 7
 
 testsClass =
-    [ ("av231",           check prop_av231)
-    , ("vee",             check prop_vee)
-    , ("wedge",           check prop_wedge)
-    , ("gt",              check prop_gt)
-    , ("lt",              check prop_lt)
-    , ("prop_separables", check prop_separables)
+    [ ("av231",        check prop_av231)
+    , ("vee",          check prop_vee)
+    , ("wedge",        check prop_wedge)
+    , ("gt",           check prop_gt)
+    , ("lt",           check prop_lt)
+    , ("separables",   check prop_separables)
     ]
 
 ---------------------------------------------------------------------------------

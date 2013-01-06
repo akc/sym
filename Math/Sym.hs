@@ -111,11 +111,7 @@ instance Show StPerm where
 
 instance Monoid StPerm where
     mempty = empty
-    mappend u v = fromVector $ SV.concat [u', v']
-        where
-          u' = toVector u
-          v' = SV.map ( + size u) $ toVector v
-
+    mappend = lift2 $ \u v -> SV.concat [u, SV.map ( + SV.length u) v]
 
 -- | Convert a standard permutation to a list.
 toList :: StPerm -> [Int]
@@ -221,10 +217,10 @@ class Perm a where
 
 instance Perm StPerm where
     st         = id
-    act u v    = fromVector $ I.act (toVector u) (toVector v)
+    act        = lift2 I.act
     size       = I.size . toVector
     idperm     = fromVector . I.idperm
-    inverse    = fromVector . I.inverse . toVector
+    inverse    = lift I.inverse
     ordiso     = (==)
     unstn _    = id
 
@@ -293,7 +289,7 @@ lift2 f u v = fromVector $ f (toVector u) (toVector v)
 -- 
 -- > generalize f = unst . f . st
 -- 
-generalize :: Perm a => (StPerm -> StPerm) -> a -> a
+generalize :: (Perm a, Perm b) => (StPerm -> StPerm) -> a -> b
 generalize f = unst . f . st
 
 -- | Like 'generalize' but for functions of two variables
@@ -307,7 +303,7 @@ normalize = map (unst . head) . group . sort . map st
 
 -- | Cast a permutation of one type to another
 cast :: (Perm a, Perm b) => a -> b
-cast = unst . st
+cast = generalize id
 
 
 -- Constructions
@@ -378,7 +374,7 @@ bubbleSort = lift I.bubbleSort
 -- > copiesOf (st "21") "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
 -- 
 copiesOf :: Perm a => StPerm -> a -> [Set]
-copiesOf p w = I.copies subsets (toVector p) (toVector $ st w)
+copiesOf p w = I.copies subsets (toVector p) (toVector w)
 
 -- | @avoids w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
 avoids :: Perm a => a -> [StPerm] -> Bool
@@ -391,7 +387,7 @@ w `avoids` ps = all null [ copiesOf p w | p <- ps ]
 -- 
 -- but is usually much faster.
 avoiders :: Perm a => [StPerm] -> [a] -> [a]
-avoiders ps = I.avoiders subsets (toVector . st) (map toVector ps)
+avoiders ps = I.avoiders subsets toVector (map toVector ps)
 
 -- | @av ps n@ is the list of permutations of @[0..n-1]@ avoiding the
 -- patterns @ps@. E.g.,
@@ -407,7 +403,7 @@ av ps = avoiders ps . sym
 
 -- | Delete the element at a given position
 del :: Perm a => Int -> a -> a
-del i = fromVector . I.del i . toVector
+del i = lift $ I.del i
 
 -- | The list of all single point deletions
 shadow :: (Ord a, Perm a) => [a] -> [a]
@@ -424,11 +420,9 @@ downset = normalize . concat . downset'
 -- | Extend a permutation by inserting a new largest element at the
 -- given position
 ext :: Perm a => Int -> a -> a
-ext i = fromVector . ext0 . toVector
-    where
-      ext0 w = SV.concat [u, SV.singleton (SV.length w), v]
-          where
-            (u,v) = SV.splitAt i w
+ext i = lift $ \w ->
+          let (u,v) = SV.splitAt i w
+          in SV.concat [u, SV.singleton (SV.length w), v]
 
 -- | The list of all single point extensions
 coshadow :: (Ord a, Perm a) => [a] -> [a]
@@ -440,19 +434,19 @@ coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
 
 -- | The set of indices of left-to-right maxima.
 lMaxima :: Perm a => a -> Set
-lMaxima = I.lMaxima . toVector . st
+lMaxima = I.lMaxima . toVector
 
 -- | The set of indices of left-to-right minima.
 lMinima :: Perm a => a -> Set
-lMinima = I.lMaxima . I.complement . toVector . st
+lMinima = I.lMaxima . I.complement . toVector
 
 -- | The set of indices of right-to-left maxima.
 rMaxima :: Perm a => a -> Set
-rMaxima = I.rMaxima . toVector . st
+rMaxima = I.rMaxima . toVector
 
 -- | The set of indices of right-to-left minima.
 rMinima :: Perm a => a -> Set
-rMinima = I.rMaxima . I.complement . toVector . st
+rMinima = I.rMaxima . I.complement . toVector
 
 
 -- Components and skew components
@@ -460,11 +454,11 @@ rMinima = I.rMaxima . I.complement . toVector . st
 
 -- | The set of indices of components.
 components :: Perm a => a -> Set
-components = I.components . toVector . st
+components = I.components . toVector
 
 -- | The set of indices of skew components.
 skewComponents :: Perm a => a -> Set
-skewComponents = I.components . I.complement . toVector . st
+skewComponents = I.components . I.complement . toVector
 
 
 -- Simple permutations
@@ -472,7 +466,7 @@ skewComponents = I.components . I.complement . toVector . st
 
 -- | A predicate determining if a given permutation is simple.
 simple :: Perm a => a -> Bool
-simple = I.simple . toVector . st
+simple = I.simple . toVector
 
 
 -- Subsets
