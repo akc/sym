@@ -1,6 +1,6 @@
 -- |
 -- Module      : Math.Sym.D8
--- Copyright   : (c) Anders Claesson 2012
+-- Copyright   : (c) Anders Claesson 2012, 2013
 -- License     : BSD-style
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- 
