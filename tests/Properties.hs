@@ -227,7 +227,7 @@ prop_ssum = forAll perm $ \u ->
             forAll perm $ \v -> (Sym./-/) u v == Sym.inflate "21" [u,v]
 
 inflate :: [Int] -> [[Int]] -> [Int]
-inflate w vs = concat . map snd $ sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ]
+inflate w vs = sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ] >>= snd
     where
       (_, w',us) = unzip3 . sort $ zip3 w [0..] vs
       cs = scanl (\i u -> i + length u) 0 us

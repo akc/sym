@@ -13,7 +13,7 @@ module Math.Sym.Class
      av231, vee, caret, gt, lt, wedges, separables
     ) where
 
-import Math.Sym (Perm, empty, one, (\+\), (/-/), dsum, ssum, normalize)
+import Math.Sym (Perm, empty, one, (\+\), (/-/), ssum, normalize)
 import Math.Sym.D8 as D8
 
 -- | Av(231); also know as the stack sortable permutations.

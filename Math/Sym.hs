@@ -55,12 +55,14 @@ module Math.Sym
     , avoiders
     , av
 
-    -- * Single point extensions/deletions, shadows and downsets
+    -- * Poset functions
     , del
     , shadow
     , downset
     , ext
     , coshadow
+    , minima
+    , maxima
 
     -- * Left-to-right maxima and similar functions
     , lMaxima
@@ -411,8 +413,8 @@ av :: [StPerm] -> Int -> [StPerm]
 av ps = avoiders ps . sym
 
 
--- Single point extensions/deletions, shadows and downsets
--- -------------------------------------------------------
+-- Poset functions
+-- ---------------
 
 -- | Delete the element at a given position
 del :: Perm a => Int -> a -> a
@@ -441,6 +443,17 @@ ext i = lift $ \w ->
 coshadow :: (Ord a, Perm a) => [a] -> [a]
 coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
 
+-- | The set of minimal elements with respect to containment.
+minima :: (Ord a, Perm a) => [a] -> [a]
+minima [] = []
+minima ws = let (v:vs) = normalize ws in v : avoiders [st v] vs
+
+-- | The set of maximal elements with respect to containment.
+maxima :: (Ord a, Perm a) => [a] -> [a]
+maxima [] = []
+maxima ws = v : maxima [ u | u <- ws, v `avoids` [st u] ]
+    where
+      v = last $ normalize ws
 
 -- Left-to-right maxima and similar functions
 -- ------------------------------------------
