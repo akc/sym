@@ -696,7 +696,7 @@ agreesWithBasis bs cls m =
 
 prop_av231      = agreesWithBasis ["231"]          C.av231      7
 prop_vee        = agreesWithBasis ["132", "231"]   C.vee        7
-prop_wedge      = agreesWithBasis ["213", "312"]   C.wedge      7
+prop_caret      = agreesWithBasis ["213", "312"]   C.caret      7
 prop_gt         = agreesWithBasis ["132", "312"]   C.gt         7
 prop_lt         = agreesWithBasis ["213", "231"]   C.lt         7
 prop_separables = agreesWithBasis ["2413", "3142"] C.separables 7
@@ -704,7 +704,7 @@ prop_separables = agreesWithBasis ["2413", "3142"] C.separables 7
 testsClass =
     [ ("av231",        check prop_av231)
     , ("vee",          check prop_vee)
-    , ("wedge",        check prop_wedge)
+    , ("caret",        check prop_caret)
     , ("gt",           check prop_gt)
     , ("lt",           check prop_lt)
     , ("separables",   check prop_separables)

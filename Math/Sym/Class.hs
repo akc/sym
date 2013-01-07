@@ -10,7 +10,7 @@
 
 module Math.Sym.Class
     (
-     av231, vee, wedge, gt, lt, vorb, separables
+     av231, vee, caret, gt, lt, wedges, separables
     ) where
 
 import Math.Sym (Perm, empty, one, (\+\), (/-/), dsum, ssum, normalize)
@@ -41,9 +41,9 @@ streamVee = [empty] : [one] : zipWith (++) vee_n n_vee
       ws    = tail streamVee
 
 -- | The ∧-class is Av(213, 312). It is so named because the diagram
--- of a typical permutation in this class is shaped like a wedge.
-wedge :: Perm a => Int -> [a]
-wedge = map D8.complement . vee
+-- of a typical permutation in this class is shaped like a ∧.
+caret :: Perm a => Int -> [a]
+caret = map D8.complement . vee
 
 -- | The >-class is Av(132, 312). It is so named because the diagram
 -- of a typical permutation in this class is shaped like a >.
@@ -58,9 +58,9 @@ lt = map D8.reverse . gt
 union :: (Ord a, Perm a) => [Int -> [a]] -> Int -> [a]
 union cs n = normalize $ concat [ c n | c <- cs ]
 
--- | The union of 'vee', 'wedge', 'gt' and 'lt'; the orbit of a V under rotation
-vorb :: (Ord a, Perm a) => Int -> [a]
-vorb = union [vee, wedge, gt, lt]
+-- | The union of 'vee', 'caret', 'gt' and 'lt'.
+wedges :: (Ord a, Perm a) => Int -> [a]
+wedges = union [vee, caret, gt, lt]
 
 compositions :: Int -> Int -> [[Int]]
 compositions 0 0 = [[]]
@@ -74,12 +74,9 @@ separables 0 = [empty]
 separables 1 = [ one ]
 separables n = pIndec n ++ mIndec n
     where
+      comps  m = [2..m] >>= \k -> compositions k m
       pIndec 0 = []
       pIndec 1 = [one]
       pIndec m = comps m >>= map ssum . mapM (streamMIndec !!)
-      streamPIndec = map pIndec [0..]
-      mIndec 0 = []
-      mIndec 1 = [one]
-      mIndec m = comps m >>= map dsum . mapM (streamPIndec !!)
+      mIndec m = map D8.complement $ pIndec m
       streamMIndec = map mIndec [0..]
-      comps  m = [2..m] >>= \k -> compositions k m
