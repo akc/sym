@@ -451,14 +451,17 @@ coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
 -- | The set of minimal elements with respect to containment.
 minima :: (Ord a, Perm a) => [a] -> [a]
 minima [] = []
-minima ws = let (v:vs) = normalize ws in v : avoiders [v] vs
+minima ws = v : minima (avoiders [v] vs)
+    where
+      (v:vs) = normalize ws
 
 -- | The set of maximal elements with respect to containment.
 maxima :: (Ord a, Perm a) => [a] -> [a]
 maxima [] = []
-maxima ws = v : maxima [ u | u <- ws, v `avoids` [u] ]
+maxima ws = v : maxima [ u | u <- vs, v `avoids` [u] ]
     where
-      v = last $ normalize ws
+      (v:vs) = reverse $ normalize ws
+
 
 -- Left-to-right maxima and similar functions
 -- ------------------------------------------

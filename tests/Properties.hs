@@ -195,6 +195,18 @@ coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
 
 prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
+prop_minima_antichain =
+    forAll (resize 14 arbitrary) $ \ws ->
+        let vs = Sym.minima ws in and [ (v::Sym.StPerm) `Sym.avoids` (vs \\ [v]) | v <- vs ]
+
+prop_minima_smallest =
+    forAll (resize 14 arbitrary) $ \ws ->
+        let vs = Sym.minima ws in and [ not ((w::Sym.StPerm) `Sym.avoids` vs) | w <- ws ]
+
+prop_maxima_antichain =
+    forAll (resize 12 arbitrary) $ \ws ->
+        let vs = Sym.maxima ws in and [ (v::Sym.StPerm) `Sym.avoids` (vs \\ [v]) | v <- vs ]
+
 recordIndicesAgree f g =
     forAll perm $ \w -> SV.fromList (recordIndices w) == f w
         where
@@ -397,6 +409,9 @@ testsPerm =
     , ("coshadow",                       check prop_coshadow)
     , ("downset/shadow",                 check prop_downset_shadow)
     , ("downset/orderideal",             check prop_downset_orderideal)
+    , ("minima/smallest",                check prop_minima_smallest)
+    , ("minima/antichain",               check prop_minima_antichain)
+    , ("maxima/antichain",               check prop_maxima_antichain)
     , ("simple",                         check prop_simple)
     , ("lMaxima",                        check prop_lMaxima)
     , ("lMinima",                        check prop_lMinima)
