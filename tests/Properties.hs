@@ -294,12 +294,13 @@ prop_copies_d8 (Symmetry (f,_)) =
 prop_avoiders_avoid =
     forAll (resize 20 arbitrary) $ \ws ->
     forAll (resize  6 arbitrary) $ \ps ->
-        all (`Sym.avoids` ps) $ Sym.avoiders ps (ws :: [Sym.StPerm])
+        all (`Sym.avoids` ps) $ Sym.avoiders (ps :: [Sym.StPerm]) (ws :: [Sym.StPerm])
 
 prop_avoiders_idempotent =
     forAll (resize 18 arbitrary) $ \vs ->
     forAll (resize  5 arbitrary) $ \ps ->
-        let ws = Sym.avoiders ps (vs :: [Sym.StPerm]) in ws == Sym.avoiders ps ws
+        let ws = Sym.avoiders (ps :: [Sym.StPerm]) (vs :: [Sym.StPerm])
+        in  ws == Sym.avoiders ps ws
 
 prop_avoiders_d8 (Symmetry (f,_)) =
     forAll (choose (0, 5))      $ \n ->
@@ -320,7 +321,7 @@ prop_avoiders_d8'' (Symmetry (f,_)) =
 
 prop_av_cardinality =
     forAll (resize 3 arbitrary) $ \p ->
-        let spec = [ length $ Sym.av [p] n | n<-[0..6] ]
+        let spec = [ length $ Sym.av [p :: Sym.StPerm] n | n<-[0..6] ]
         in case Sym.size p of
              0 -> spec == [0,0,0,0,0,0,0]
              1 -> spec == [1,0,0,0,0,0,0]

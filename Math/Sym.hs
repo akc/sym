@@ -54,6 +54,7 @@ module Math.Sym
     , avoids
     , avoiders
     , av
+    , permClass
 
     -- * Poset functions
     , del
@@ -279,7 +280,7 @@ fromVector :: Perm a => Vector Int -> a
 fromVector = unst . StPerm
 
 -- | The bijective function defined by a permutation.
-bijection :: StPerm -> Int -> Int
+bijection :: Perm a => a -> Int -> Int
 bijection w = (SV.!) v where v = toVector w
 
 lift :: (Perm a, Perm b) => (Vector Int -> Vector Int) -> a -> b
@@ -338,8 +339,8 @@ ssum = foldr (/-/) empty
 -- in such a way that the intervals are order isomorphic to @w@. In
 -- particular,
 -- 
--- > u \+\ v == inflate (fromList [0,1]) [u,v]
--- > u /-/ v == inflate (fromList [1,0]) [u,v]
+-- > u \+\ v == inflate "12" [u,v]
+-- > u /-/ v == inflate "21" [u,v]
 -- 
 inflate :: (Perm a, Perm b) => b -> [a] -> a
 inflate w vs = lift (\v -> I.inflate v (map toVector vs)) w
@@ -386,13 +387,13 @@ bubbleSort = lift I.bubbleSort
 -- | @copiesOf p w@ is the list of (indices of) copies of the pattern
 -- @p@ in the permutation @w@. E.g.,
 -- 
--- > copiesOf (st "21") "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
+-- > copiesOf "21" "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
 -- 
-copiesOf :: Perm a => StPerm -> a -> [Set]
+copiesOf :: (Perm a, Perm b) => b -> a -> [Set]
 copiesOf p w = I.copies subsets (toVector p) (toVector w)
 
 -- | @avoids w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
-avoids :: Perm a => a -> [StPerm] -> Bool
+avoids :: (Perm a, Perm b) => a -> [b] -> Bool
 w `avoids` ps = all null [ copiesOf p w | p <- ps ]
 
 -- | @avoiders ps vs@ is the list of permutations in @vs@ avoiding the
@@ -401,16 +402,20 @@ w `avoids` ps = all null [ copiesOf p w | p <- ps ]
 -- > avoiders ps = filter (`avoids` ps)
 -- 
 -- but is usually much faster.
-avoiders :: Perm a => [StPerm] -> [a] -> [a]
+avoiders :: (Perm a, Perm b) => [b] -> [a] -> [a]
 avoiders ps = I.avoiders subsets toVector (map toVector ps)
 
 -- | @av ps n@ is the list of permutations of @[0..n-1]@ avoiding the
 -- patterns @ps@. E.g.,
 -- 
--- > map (length . av [st "132", st "321"]) [1..8] == [1,2,4,7,11,16,22,29]
+-- > map (length . av ["132","321"]) [1..8] == [1,2,4,7,11,16,22,29]
 -- 
-av :: [StPerm] -> Int -> [StPerm]
+av :: Perm a => [a] -> Int -> [StPerm]
 av ps = avoiders ps . sym
+
+-- | Like 'av' but the return type is any set of permutations.
+permClass :: (Perm a, Perm b) => [a] -> Int -> [b]
+permClass ps = avoiders ps . perms
 
 
 -- Poset functions
@@ -446,12 +451,12 @@ coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
 -- | The set of minimal elements with respect to containment.
 minima :: (Ord a, Perm a) => [a] -> [a]
 minima [] = []
-minima ws = let (v:vs) = normalize ws in v : avoiders [st v] vs
+minima ws = let (v:vs) = normalize ws in v : avoiders [v] vs
 
 -- | The set of maximal elements with respect to containment.
 maxima :: (Ord a, Perm a) => [a] -> [a]
 maxima [] = []
-maxima ws = v : maxima [ u | u <- ws, v `avoids` [st u] ]
+maxima ws = v : maxima [ u | u <- ws, v `avoids` [u] ]
     where
       v = last $ normalize ws
 
