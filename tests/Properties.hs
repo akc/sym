@@ -187,13 +187,14 @@ prop_downset_orderideal =
                                         , w `Sym.avoids` [Sym.st v]
                                         ]
 
-coshadow :: (Enum a, Ord a) => [a] -> [[a]]
-coshadow w = sort $ ptExtensions (succ $ maximum (toEnum 0 : w)) w
+coshadow :: Integral a => [a] -> [[Int]]
+coshadow w = nub . sort . map (map (+1) . st) $ [0..length w] >>= \i ->
+             ptExtensions (fromIntegral i + 0.5) (map fromIntegral w)
     where
       ptExtensions n [] = [[n]]
       ptExtensions n xs@(x:xt) = (n:xs) : map (x:) (ptExtensions n xt)
 
-prop_coshadow = forAll (resize 50 perm) $ \w -> Sym.coshadow [w] == coshadow w
+prop_coshadow = forAll (resize 12 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
 prop_minima_antichain =
     forAll (resize 14 arbitrary) $ \ws ->

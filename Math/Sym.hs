@@ -437,16 +437,18 @@ downset = normalize . concat . downset'
       downset' [] = []
       downset' ws = ws : downset' (shadow ws)
 
--- | Extend a permutation by inserting a new largest element at the
--- given position
-ext :: Perm a => Int -> a -> a
-ext i = lift $ \w ->
+-- | @ext i j w@ extends a @w@ by inserting a new element of
+-- (relative) size @j@ at position @i@. It should hold that
+-- @0 <= i,j <= size w@.
+ext :: Perm a => Int -> Int -> a -> a
+ext i j = lift $ \w ->
           let (u,v) = SV.splitAt i w
-          in SV.concat [u, SV.singleton (SV.length w), v]
+              f x = if x < j then x else x+1
+          in SV.concat [SV.map f u, SV.singleton j, SV.map f v]
 
 -- | The list of all single point extensions
 coshadow :: (Ord a, Perm a) => [a] -> [a]
-coshadow ws = normalize [ ext i w | w <- ws, i <- [0 .. size w] ]
+coshadow ws = normalize [ ext i j w | w <- ws, let n = size w, i <- [0..n], j <- [0..n] ]
 
 -- | The set of minimal elements with respect to containment.
 minima :: (Ord a, Perm a) => [a] -> [a]
