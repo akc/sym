@@ -196,6 +196,11 @@ coshadow w = nub . sort . map (map (+1) . st) $ [0..length w] >>= \i ->
 
 prop_coshadow = forAll (resize 12 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
+prop_coeff =
+    forAll (resize 5 perm) $ \u ->
+        let f = length . Sym.copiesOf u
+        in forAll (resize 6 perm) $ \v -> Sym.coeff f v == fromEnum (u==v)
+
 prop_minima_antichain =
     forAll (resize 14 arbitrary) $ \ws ->
         let vs = Sym.minima ws in and [ (v::Sym.StPerm) `Sym.avoids` (vs \\ [v]) | v <- vs ]
@@ -408,6 +413,7 @@ testsPerm =
     , ("ordiso/2",                       check prop_ordiso2)
     , ("shadow",                         check prop_shadow)
     , ("coshadow",                       check prop_coshadow)
+    , ("coeff",                          check prop_coeff)
     , ("downset/shadow",                 check prop_downset_shadow)
     , ("downset/orderideal",             check prop_downset_orderideal)
     , ("minima/smallest",                check prop_minima_smallest)

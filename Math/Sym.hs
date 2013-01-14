@@ -64,6 +64,7 @@ module Math.Sym
     , coshadow
     , minima
     , maxima
+    , coeff
 
     -- * Left-to-right maxima and similar functions
     , lMaxima
@@ -94,6 +95,7 @@ import qualified Data.Vector.Storable as SV
     ( (!), toList, fromList, fromListN, empty, singleton
     , length, map, concat, splitAt
     )
+import Math.Sym.Internal (Perm0)
 import qualified Math.Sym.Internal as I
 import Foreign.C.Types (CUInt(..))
 
@@ -103,7 +105,7 @@ import Foreign.C.Types (CUInt(..))
 
 -- | By a /standard permutation/ we shall mean a permutations of
 -- @[0..k-1]@.
-newtype StPerm = StPerm { perm0 :: I.Perm0 } deriving Eq
+newtype StPerm = StPerm { perm0 :: Perm0 } deriving Eq
 
 instance Ord StPerm where
     compare u v = case comparing size u v of
@@ -463,6 +465,16 @@ maxima [] = []
 maxima ws = v : maxima [ u | u <- vs, v `avoids` [u] ]
     where
       (v:vs) = reverse $ normalize ws
+
+-- | @coeff f v@ is the coefficient of @v@ when expanding the
+-- permutation statistic @f@ as a sum of permutations/patterns.
+coeff :: Perm a => (a -> Int) -> a -> Int
+coeff f v = f v + sum [ (-1)^(k - j) * c * f u |
+                        j <- [0 .. k-1]
+                      , u <- perms j
+                      , let c = length $ copiesOf u v
+                      , c > 0
+                      ] where k = size v
 
 
 -- Left-to-right maxima and similar functions
