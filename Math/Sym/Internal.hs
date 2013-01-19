@@ -111,7 +111,7 @@ module Math.Sym.Internal
 import Prelude hiding (reverse, head, last)
 import qualified Prelude (head)
 import System.Random (getStdRandom, randomR)
-import Control.Monad (forM_, foldM_, liftM)
+import Control.Monad (forM_, foldM, foldM_, liftM)
 import Control.Monad.ST (runST)
 import Data.List (group, sort)
 import Data.Bits (Bits, shiftR, (.|.), (.&.), popCount)
@@ -520,19 +520,17 @@ des0 = stat c_des0
 lMaxima :: Perm0 -> SV.Vector Int
 lMaxima w = runST $ do
   v <- MV.unsafeNew n
-  k <- iter v n 0 (-1)
+  (_,_,k) <- foldM iter (v,-1,0) [0..n-1]
   SV.unsafeFreeze $ MV.unsafeSlice 0 k v
     where
       n = size w
-      {-# INLINE iter #-}
-      iter _ 0 j _ = return j
-      iter v i j m = do
-        let m' = w ! (n-i)
+      iter (v, m, j) i = do
+        let m' = w ! i
         if m' > m then do
-            MV.unsafeWrite v j (n-i)
-            iter v (i-1) (j+1) m'
+            MV.unsafeWrite v j i
+            return (v, m', j+1)
           else
-            iter v (i-1) j m
+            return (v, m, j)
 
 -- | The set of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
@@ -546,19 +544,17 @@ rMaxima w = SV.reverse . SV.map (\x -> size w - x - 1) . lMaxima $ reverse w
 components :: Perm0 -> SV.Vector Int
 components w = runST $ do
   v <- MV.unsafeNew n
-  k <- iter v n 0 (-1)
+  (_,_,k) <- foldM iter (v,-1,0) [0..n-1]
   SV.unsafeFreeze $ MV.unsafeSlice 0 k v
     where
       n = size w
-      {-# INLINE iter #-}
-      iter _ 0 j _ = return j
-      iter v i j m = do
-        let m' = max m $ w ! (n-i)
-        if m' == n-i then do
-            MV.unsafeWrite v j (n-i)
-            iter v (i-1) (j+1) m'
+      iter (v, m, j) i = do
+        let m' = max m $ w ! i
+        if m' == i then do
+            MV.unsafeWrite v j i
+            return (v, m', j+1)
           else
-            iter v (i-1) j m'
+            return (v, m', j)
 
 
 -- Sorting operators
