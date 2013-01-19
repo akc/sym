@@ -148,15 +148,14 @@ type Perm0 = SV.Vector Int
 unrankLehmercode :: Int -> Integer -> Lehmercode
 unrankLehmercode n rank = runST $ do
   v <- MV.unsafeNew n
-  iter v n rank (toInteger n)
+  foldM_ iter (v, rank, toInteger n) [0..n-1]
   SV.unsafeFreeze v
     where
       {-# INLINE iter #-}
-      iter _ 0 _ _ = return ()
-      iter v i r m = do
+      iter (v,r,m) i = do
         let (r',j) = quotRem r m
-        MV.unsafeWrite v (n-i) (fromIntegral j)
-        iter v (i-1) r' (m-1)
+        MV.unsafeWrite v i $ fromIntegral j
+        return (v,r',m-1)
 
 -- | Build a permutation from its Lehmercode.
 fromLehmercode :: Lehmercode -> Perm0
