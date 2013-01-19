@@ -184,7 +184,7 @@ prop_downset_shadow =
 
 prop_downset_orderideal =
     forAll (resize 9 perm) $ \w -> null [ v | v <- Sym.downset [w]
-                                        , w `Sym.avoids` [Sym.st v]
+                                        , w `Sym.avoids` v
                                         ]
 
 coshadow :: Integral a => [a] -> [[Int]]
@@ -198,20 +198,19 @@ prop_coshadow = forAll (resize 12 perm) $ \w -> Sym.coshadow [w] == coshadow w
 
 prop_coeff =
     forAll (resize 5 perm) $ \u ->
-        let f = length . Sym.copiesOf u
-        in forAll (resize 6 perm) $ \v -> Sym.coeff f v == fromEnum (u==v)
+        forAll (resize 6 perm) $ \v -> Sym.coeff (Sym.stat u) v == fromEnum (u==v)
 
 prop_minima_antichain =
     forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ (v::Sym.StPerm) `Sym.avoids` (vs \\ [v]) | v <- vs ]
+        let vs = Sym.minima ws in and [ (v::Sym.StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
 
 prop_minima_smallest =
     forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ not ((w::Sym.StPerm) `Sym.avoids` vs) | w <- ws ]
+        let vs = Sym.minima ws in and [ not ((w::Sym.StPerm) `Sym.avoidsAll` vs) | w <- ws ]
 
 prop_maxima_antichain =
     forAll (resize 12 arbitrary) $ \ws ->
-        let vs = Sym.maxima ws in and [ (v::Sym.StPerm) `Sym.avoids` (vs \\ [v]) | v <- vs ]
+        let vs = Sym.maxima ws in and [ (v::Sym.StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
 
 recordIndicesAgree f g =
     forAll perm $ \w -> SV.fromList (recordIndices w) == f w
@@ -282,13 +281,13 @@ prop_simple = forAll (resize 40 perm) $ \w -> Sym.simple w == simple w
 prop_stackSort = Sym.stackSort `forAllPermEq` stack
 
 prop_stackSort_231 =
-  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` [Sym.st "231"])
+  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` "231")
 
 prop_bubbleSort = Sym.bubbleSort `forAllPermEq` bubble
 
 prop_bubbleSort_231_321 = forAllPermEq f g
     where f v = Sym.bubbleSort v == neutralize v
-          g v = v `Sym.avoids` [Sym.st "231", Sym.st "321"]
+          g v = v `Sym.avoidsAll` ["231", "321"]
 
 prop_subperm_copies p =
     forAll (resize 21 perm) $ \w ->
@@ -300,19 +299,19 @@ prop_copies =
         sort (Sym.copiesOf p w) == sort (map I.fromList $ copies (Sym.toList p) w)
 
 prop_copies_self =
-    forAll perm $ \v -> Sym.copiesOf (Sym.st v) v == [SV.fromList [0 .. length v - 1]]
+    forAll perm $ \v -> Sym.copiesOf v v == [SV.fromList [0 .. length v - 1]]
 
 prop_copies_d8 (Symmetry (f,_)) =
     forAll (resize  6 arbitrary) $ \p ->
     forAll (resize 20 perm)      $ \w ->
         let p' = f p
             w' = Sym.generalize f w :: [Int]
-        in length (Sym.copiesOf p w) == length (Sym.copiesOf p' w')
+        in Sym.stat p w == Sym.stat p' w'
 
 prop_avoiders_avoid =
     forAll (resize 20 arbitrary) $ \ws ->
     forAll (resize  6 arbitrary) $ \ps ->
-        all (`Sym.avoids` ps) $ Sym.avoiders (ps :: [Sym.StPerm]) (ws :: [Sym.StPerm])
+        all (`Sym.avoidsAll` ps) $ Sym.avoiders (ps :: [Sym.StPerm]) (ws :: [Sym.StPerm])
 
 prop_avoiders_idempotent =
     forAll (resize 18 arbitrary) $ \vs ->
@@ -674,8 +673,7 @@ prop_dim    = forAllPermEq dim   S.dim
 prop_asc0   = forAllPermEq asc0  S.asc0
 prop_des0   = forAllPermEq des0  S.des0
 prop_shad   = forAllPermEq shad  S.shad
-prop_inv_21 = forAll (resize 30 perm) $ \w ->
-              S.inv w == (length . Sym.copiesOf (Sym.st "21")) w
+prop_inv_21 = forAll (resize 30 perm) $ \w -> S.inv w == Sym.stat "21" w
 
 testsStat =
     [ ("asc",          check prop_asc)

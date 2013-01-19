@@ -39,6 +39,7 @@ Library
                        Math.Sym.D8
                        Math.Sym.Stat
                        Math.Sym.Class
+                       Math.Sym.Bijection
                        Math.Sym.Internal
 
   Build-depends:       base >= 3 && < 5, random, vector

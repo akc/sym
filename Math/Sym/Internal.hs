@@ -112,6 +112,8 @@ import Control.Monad (forM_, liftM)
 import Control.Monad.ST (runST)
 import Data.List (group, sort)
 import Data.Bits (Bits, shiftR, (.|.), (.&.), popCount)
+import Data.IntMap (IntMap)
+import qualified Data.IntMap as Map
 import qualified Data.Vector.Storable as SV
     ( Vector, toList, fromList, length, (!), thaw, concat
     , unsafeFreeze, unsafeWith, enumFromN, enumFromStepN
@@ -527,7 +529,6 @@ lMaxima w = runST $ do
           else
             iter v (i-1) j m
 
-
 -- | The set of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
 rMaxima w = SV.reverse . SV.map (\x -> SV.length w - x - 1) . lMaxima $ reverse w
@@ -563,7 +564,7 @@ foreign import ccall unsafe "sortop.h stacksort" c_stacksort
 foreign import ccall unsafe "sortop.h bubblesort" c_bubblesort
     :: Ptr CLong -> CLong -> IO ()
 
--- Marshal a sorting operator defined in C to on in Haskell.
+-- Marshal a sorting operator defined in C to one in Haskell.
 sortop :: (Ptr CLong -> CLong -> IO ()) -> Perm0 -> Perm0
 sortop f w = unsafePerformIO $ do
                v <- SV.thaw w
@@ -597,6 +598,29 @@ del i u = runST $ do
             MV.unsafeWrite v (k-1) (if m < j then m else m-1)
   SV.unsafeFreeze v
 
+
+-- Bijections
+-- ----------
+
+-- Given a set L in lmin(Sn), this is how we construct the corresponding
+-- permutation t = c1 c2 ... cn in Sn(132): For i from 1 to n,
+
+-- * if (i, a) is in L let ci = a; otherwise,
+
+-- * let cj be the smallest letter not used that is greater than all the
+--   letters used thus far.
+
+-- Given a set L in lmin(Sn), this is how we construct the corresponding
+-- permutation p = a1 a2 ... an in Sn(123): For i from 1 to n,
+
+-- * if (i, c) is in L let ai = c; otherwise,
+
+-- * let aj be the largest letter not used thus far.
+
+lMinMap :: Perm0 -> IntMap
+lMinMap w = 
+    where
+      lMaxima (complement w)
 
 -- Bitmasks
 -- --------
