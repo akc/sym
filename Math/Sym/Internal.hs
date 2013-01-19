@@ -99,6 +99,7 @@ module Math.Sym.Internal
     , del
 
     -- * Bijections
+    , simionSchmidt
     , simionSchmidt'
 
     -- * Bitmasks
@@ -115,12 +116,12 @@ import Control.Monad (forM_, foldM, foldM_, liftM)
 import Control.Monad.ST (runST)
 import Data.List (group, sort)
 import Data.Bits (Bits, shiftR, (.|.), (.&.), popCount)
-import Data.IntMap (IntMap)
-import qualified Data.IntMap as Map
 import qualified Data.IntSet as Set
+    ( empty, insert, delete, notMember, findMax, fromDistinctAscList
+    )
 import Data.Vector.Storable ((!))
 import qualified Data.Vector.Storable as SV
-    ( Vector, toList, fromList, length, thaw, concat, foldr
+    ( Vector, toList, fromList, length, thaw, concat
     , unsafeFreeze, unsafeWith, enumFromN, enumFromStepN
     , head, last, filter, maximum, minimum, null, reverse, map
     )
@@ -603,44 +604,36 @@ del i u = runST $ do
 -- Bijections
 -- ----------
 
--- Given a set L in lmin(Sn), this is how we construct the corresponding
--- permutation t = c1 c2 ... cn in Sn(132): For i from 1 to n,
-
--- * if (i, a) is in L let ci = a; otherwise,
-
--- * let cj be the smallest letter not used that is greater than all the
---   letters used thus far.
-
--- Given a set L in lmin(Sn), this is how we construct the corresponding
--- permutation p = a1 a2 ... an in Sn(123): For i from 1 to n,
-
--- * if (i, c) is in L let ai = c; otherwise,
-
--- * let aj be the largest letter not used thus far.
-
-lMinMap :: Perm0 -> IntMap Int
-lMinMap w = SV.foldr (\i m -> Map.insert i (w ! i) m) Map.empty
-            $ lMaxima (complement w)
+-- | The Simion-Schmidt bijection from Av(123) onto Av(132).
+simionSchmidt :: Perm0 -> Perm0
+simionSchmidt w = runST $ do
+  v <- MV.unsafeNew n
+  foldM_ iter (v, n, Set.empty) [0..n-1]
+  SV.unsafeFreeze v
+    where
+      n = size w
+      iter (v, m, s) i = do
+        let c = w ! i
+        let y = Prelude.head [ x | x <- [m+1 .. ], x `Set.notMember` s ]
+        let (d, k) = if c < m then (c, c) else (y, m)
+        MV.unsafeWrite v i d
+        return (v, k, Set.insert d s)
 
 -- | The inverse of the Simion-Schmidt bijection. It is a function
 -- from Av(132) to Av(123).
 simionSchmidt' :: Perm0 -> Perm0
 simionSchmidt' w = runST $ do
   v <- MV.unsafeNew n
-  let is = [0 .. n - 1]
-  foldM_ iter (v, lMinMap w, Set.fromDistinctAscList is) is
+  let is = [0..n-1]
+  foldM_ iter (v, n, Set.fromDistinctAscList is) is
   SV.unsafeFreeze v
     where
       n = size w
-      iter (v,m,s) i =
-          case Map.lookup i m of
-            Just c  -> do
-              MV.unsafeWrite v i c
-              return (v, m, Set.delete c s)
-            Nothing -> do
-              let (c, s') = Set.deleteFindMax s
-              MV.unsafeWrite v i c
-              return (v, m, s')
+      iter (v, m, s) i = do
+        let c = w ! i
+        let (d, k) = if c < m then (c, c) else (Set.findMax s, m)
+        MV.unsafeWrite v i d
+        return (v, k, Set.delete d s)
 
 
 -- Bitmasks
