@@ -28,6 +28,8 @@ module Math.Sym
     , toVector
     , fromVector
     , bijection
+    , lift
+    , lift2
     , generalize
     , generalize2
     , normalize

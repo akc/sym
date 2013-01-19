@@ -98,6 +98,9 @@ module Math.Sym.Internal
     -- * Single point deletions
     , del
 
+    -- * Bijections
+    , simionSchmidt'
+
     -- * Bitmasks
     , onesCUInt
     , nextCUInt
@@ -108,14 +111,16 @@ module Math.Sym.Internal
 import Prelude hiding (reverse, head, last)
 import qualified Prelude (head)
 import System.Random (getStdRandom, randomR)
-import Control.Monad (forM_, liftM)
+import Control.Monad (forM_, foldM_, liftM)
 import Control.Monad.ST (runST)
 import Data.List (group, sort)
 import Data.Bits (Bits, shiftR, (.|.), (.&.), popCount)
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as Map
+import qualified Data.IntSet as Set
+import Data.Vector.Storable ((!))
 import qualified Data.Vector.Storable as SV
-    ( Vector, toList, fromList, length, (!), thaw, concat
+    ( Vector, toList, fromList, length, thaw, concat, foldr
     , unsafeFreeze, unsafeWith, enumFromN, enumFromStepN
     , head, last, filter, maximum, minimum, null, reverse, map
     )
@@ -159,7 +164,7 @@ fromLehmercode code = runST $ do
   let n = SV.length code
   v <- MV.unsafeNew n
   forM_ [0..n-1] $ \i -> MV.unsafeWrite v i i
-  forM_ [0..n-1] $ \i -> MV.swap v i (i + (SV.!) code i)
+  forM_ [0..n-1] $ \i -> MV.swap v i (i + code ! i)
   SV.unsafeFreeze v
 
 -- | A random Lehmercode of the given length.
@@ -189,9 +194,9 @@ fromList = SV.fromList
 -- | @act u v@ is the permutation /w/ defined by /w(u(i)) = v(i)/.
 act :: Perm0 -> Perm0 -> Perm0
 act u v = runST $ do
-  let n = SV.length u
+  let n = size u
   w <- MV.unsafeNew n
-  forM_ [0..n-1] $ \i -> MV.unsafeWrite w i ((SV.!) v ((SV.!) u i))
+  forM_ [0..n-1] $ \i -> MV.unsafeWrite w i (v ! (u ! i))
   SV.unsafeFreeze w
 
 -- | @inflate w vs@ is the /inflation/ of @w@ by @vs@.
@@ -232,9 +237,9 @@ sti :: Perm0 -> Perm0
 sti w = runST $ do
   let a = if SV.null w then 0 else SV.minimum w
   let b = if SV.null w then 0 else SV.maximum w
-  let n = SV.length w
+  let n = size w
   v <- MV.replicate (1 + b - a) (-1)
-  forM_ [0..n-1] $ \i -> MV.unsafeWrite v ((SV.!) w i - a) i
+  forM_ [0..n-1] $ \i -> MV.unsafeWrite v (w ! i - a) i
   SV.filter (>=0) `liftM` SV.unsafeFreeze v
 
 -- | The standardization map.
@@ -248,7 +253,7 @@ foreign import ccall unsafe "ordiso.h ordiso" c_ordiso
 -- @m@ is order isomorphic to @u@.
 ordiso :: Perm0 -> Perm0 -> SV.Vector Int -> Bool
 ordiso u v m =
-    let k = fromIntegral (SV.length u)
+    let k = fromIntegral (size u)
     in  unsafePerformIO $
         SV.unsafeWith u $ \u' ->
         SV.unsafeWith v $ \v' ->
@@ -261,7 +266,7 @@ foreign import ccall unsafe "simple.h simple" c_simple
 -- | @simple w@ determines whether @w@ is simple
 simple :: Perm0 -> Bool
 simple w =
-    let n = fromIntegral (SV.length w)
+    let n = fromIntegral (size w)
     in  unsafePerformIO $
         SV.unsafeWith w $ \w' ->
         return . toBool $ c_simple (castPtr w') n
@@ -270,8 +275,8 @@ simple w =
 copies :: (Int -> Int -> [SV.Vector Int]) -> Perm0 -> Perm0 -> [SV.Vector Int]
 copies subsets p w = filter (ordiso p w) $ subsets n k
     where
-      n = SV.length w
-      k = SV.length p
+      n = size w
+      k = size p
 
 avoiders1 :: (Int -> Int -> [SV.Vector Int]) -> (a -> Perm0) -> Perm0 -> [a] -> [a]
 avoiders1 subsets f p ws =
@@ -279,7 +284,7 @@ avoiders1 subsets f p ws =
         ws2 = zip ws0 ws
     in case group (map SV.length ws0) of
          []  -> []
-         [_] -> let k = SV.length p
+         [_] -> let k = size p
                     n = SV.length (Prelude.head ws0)
                 in  [ v | (v0,v) <- ws2,  not $ any (ordiso p v0) (subsets n k) ]
          _   ->     [ v | (v0,v) <- ws2, null $ copies subsets p v0 ] 
@@ -302,24 +307,24 @@ reverse = SV.reverse
 -- | @complement \<a_1,...,a_n\> == \<b_1,,...,b_n\>@, where @b_i = n - a_i - 1@.
 -- E.g., @complement \<3,4,0,1,2\> == \<1,0,4,3,2\>@.
 complement :: Perm0 -> Perm0
-complement w = SV.map (\x -> SV.length w - x - 1) w
+complement w = SV.map (\x -> size w - x - 1) w
 
 -- | @inverse w@ is the group theoretical inverse of @w@. E.g.,
 -- @inverse \<1,2,0\> == \<2,0,1\>@.
 inverse :: Perm0 -> Perm0
 inverse w = runST $ do
-  let n = SV.length w
+  let n = size w
   v <- MV.unsafeNew n
-  forM_ [0..n-1] $ \i -> MV.unsafeWrite v ((SV.!) w i) i
+  forM_ [0..n-1] $ \i -> MV.unsafeWrite v (w ! i) i
   SV.unsafeFreeze v
 
 -- | The clockwise rotatation through 90 degrees. E.g.,
 -- @rotate \<1,0,2\> == \<1,2,0\>@.
 rotate :: Perm0 -> Perm0
 rotate w = runST $ do
-  let n = SV.length w
+  let n = size w
   v <- MV.unsafeNew n
-  forM_ [0..n-1] $ \i -> MV.unsafeWrite v ((SV.!) w (n-1-i)) i
+  forM_ [0..n-1] $ \i -> MV.unsafeWrite v (w ! (n-1-i)) i
   SV.unsafeFreeze v
 
 
@@ -522,7 +527,7 @@ lMaxima w = runST $ do
       {-# INLINE iter #-}
       iter _ 0 j _ = return j
       iter v i j m = do
-        let m' = (SV.!) w (n-i)
+        let m' = w ! (n-i)
         if m' > m then do
             MV.unsafeWrite v j (n-i)
             iter v (i-1) (j+1) m'
@@ -531,7 +536,7 @@ lMaxima w = runST $ do
 
 -- | The set of indices of right-to-left maxima.
 rMaxima :: Perm0 -> SV.Vector Int
-rMaxima w = SV.reverse . SV.map (\x -> SV.length w - x - 1) . lMaxima $ reverse w
+rMaxima w = SV.reverse . SV.map (\x -> size w - x - 1) . lMaxima $ reverse w
 
 
 -- Components
@@ -548,12 +553,13 @@ components w = runST $ do
       {-# INLINE iter #-}
       iter _ 0 j _ = return j
       iter v i j m = do
-        let m' = max m $ (SV.!) w (n-i)
+        let m' = max m $ w ! (n-i)
         if m' == n-i then do
             MV.unsafeWrite v j (n-i)
             iter v (i-1) (j+1) m'
           else
             iter v (i-1) j m'
+
 
 -- Sorting operators
 -- -----------------
@@ -569,7 +575,7 @@ sortop :: (Ptr CLong -> CLong -> IO ()) -> Perm0 -> Perm0
 sortop f w = unsafePerformIO $ do
                v <- SV.thaw w
                MV.unsafeWith v $ \ptr -> do
-                 f (castPtr ptr) (fromIntegral (SV.length w))
+                 f (castPtr ptr) (fromIntegral (size w))
                  SV.unsafeFreeze v
 
 -- | One pass of stack-sort.
@@ -587,14 +593,14 @@ bubbleSort = sortop c_bubblesort
 -- | Delete the element at a given position
 del :: Int -> Perm0 -> Perm0
 del i u = runST $ do
-  let n = SV.length u
-  let j = (SV.!) u i
+  let n = size u
+  let j = u ! i
   v <- MV.unsafeNew (n-1)
   forM_ [0..i-1] $ \k -> do
-            let m = (SV.!) u k
+            let m = u ! k
             MV.unsafeWrite v k (if m < j then m else m-1)
   forM_ [i+1..n-1] $ \k -> do
-            let m = (SV.!) u k
+            let m = u ! k
             MV.unsafeWrite v (k-1) (if m < j then m else m-1)
   SV.unsafeFreeze v
 
@@ -617,10 +623,30 @@ del i u = runST $ do
 
 -- * let aj be the largest letter not used thus far.
 
-lMinMap :: Perm0 -> IntMap
-lMinMap w = 
+lMinMap :: Perm0 -> IntMap Int
+lMinMap w = SV.foldr (\i m -> Map.insert i (w ! i) m) Map.empty
+            $ lMaxima (complement w)
+
+-- | The inverse of the Simion-Schmidt bijection. It is a function
+-- from Av(132) to Av(123).
+simionSchmidt' :: Perm0 -> Perm0
+simionSchmidt' w = runST $ do
+  v <- MV.unsafeNew n
+  let is = [0 .. n - 1]
+  foldM_ iter (v, lMinMap w, Set.fromDistinctAscList is) is
+  SV.unsafeFreeze v
     where
-      lMaxima (complement w)
+      n = size w
+      iter (v,m,s) i =
+          case Map.lookup i m of
+            Just c  -> do
+              MV.unsafeWrite v i c
+              return (v, m, Set.delete c s)
+            Nothing -> do
+              let (c, s') = Set.deleteFindMax s
+              MV.unsafeWrite v i c
+              return (v, m, s')
+
 
 -- Bitmasks
 -- --------
