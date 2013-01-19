@@ -51,7 +51,10 @@ module Math.Sym
 
     -- * Permutation patterns
     , copiesOf
+    , stat
+    , contains
     , avoids
+    , avoidsAll
     , avoiders
     , av
     , permClass
@@ -394,14 +397,30 @@ bubbleSort = lift I.bubbleSort
 copiesOf :: (Perm a, Perm b) => b -> a -> [Set]
 copiesOf p w = I.copies subsets (toVector p) (toVector w)
 
--- | @avoids w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
-avoids :: (Perm a, Perm b) => a -> [b] -> Bool
-w `avoids` ps = all null [ copiesOf p w | p <- ps ]
+-- | @stat p@ the pattern @p@ when regarded as a statistic/function
+-- counting copies of itself:
+-- 
+-- > stat p = length . copiesOf p
+-- 
+stat :: (Perm a, Perm b) => b -> a -> Int
+stat p = length . copiesOf p
+
+-- | @contains w p@ is a predicate determining if @w@ contains the pattern @p@.
+contains :: (Perm a, Perm b) => a -> b -> Bool
+w `contains` p = not $ w `avoids` p
+
+-- | @avoids w p@ is a predicate determining if @w@ avoids the pattern @p@.
+avoids :: (Perm a, Perm b) => a -> b -> Bool
+w `avoids` p = null $ copiesOf p w
+
+-- | @avoidsAll w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
+avoidsAll :: (Perm a, Perm b) => a -> [b] -> Bool
+w `avoidsAll` ps = all (w `avoids`) ps
 
 -- | @avoiders ps vs@ is the list of permutations in @vs@ avoiding the
 -- patterns @ps@. This is equivalent to the definition
 -- 
--- > avoiders ps = filter (`avoids` ps)
+-- > avoiders ps = filter (`avoidsAll` ps)
 -- 
 -- but is usually much faster.
 avoiders :: (Perm a, Perm b) => [b] -> [a] -> [a]
@@ -439,7 +458,7 @@ downset = normalize . concat . downset'
       downset' [] = []
       downset' ws = ws : downset' (shadow ws)
 
--- | @ext i j w@ extends a @w@ by inserting a new element of
+-- | @ext i j w@ extends @w@ by inserting a new element of
 -- (relative) size @j@ at position @i@. It should hold that
 -- @0 <= i,j <= size w@.
 ext :: Perm a => Int -> Int -> a -> a
@@ -462,7 +481,7 @@ minima ws = v : minima (avoiders [v] vs)
 -- | The set of maximal elements with respect to containment.
 maxima :: (Ord a, Perm a) => [a] -> [a]
 maxima [] = []
-maxima ws = v : maxima [ u | u <- vs, v `avoids` [u] ]
+maxima ws = v : maxima [ u | u <- vs, v `avoids` u ]
     where
       (v:vs) = reverse $ normalize ws
 
