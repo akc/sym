@@ -1,12 +1,10 @@
 -- |
--- Module      : Math.Sym.Class
--- Copyright   : (c) Anders Claesson 2012, 2013
+-- Module      : Math.Sym.Bijection
+-- Copyright   : (c) Anders Claesson 2013
 -- License     : BSD-style
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- 
--- A permutation class is a downset in the poset of permutations
--- ordered by containment. This module provides definitions of some
--- common classes.
+-- Bijections
 
 module Math.Sym.Bijection
     (
@@ -24,16 +22,11 @@ import Math.Sym (Perm, lift)
 -- * let cj be the smallest letter not used that is greater than all the
 --   letters used thus far.
 
--- Given a set L in lmin(Sn), this is how we construct the corresponding
--- permutation p = a1 a2 ... an in Sn(123): For i from 1 to n,
-
--- * if (i, c) is in L let ai = c; otherwise,
-
--- * let aj be the largest letter not used thus far.
-
-
+-- | The Simion-Schmidt bijection from Av(123) onto Av(132).
 simionSchmidt :: Perm a => a -> a
 simionSchmidt = undefined
 
+-- | The inverse of the Simion-Schmidt bijection. It is a function
+-- from Av(132) to Av(123).
 simionSchmidt' :: Perm a => a -> a
 simionSchmidt' = lift I.simionSchmidt'
