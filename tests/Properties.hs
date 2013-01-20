@@ -12,6 +12,7 @@ import qualified Math.Sym as Sym
 import qualified Math.Sym.D8 as D8
 import qualified Math.Sym.Stat as S
 import qualified Math.Sym.Class as C
+import qualified Math.Sym.Bijection as B
 import qualified Math.Sym.Internal as I
 import qualified Data.Vector.Storable as SV
 import Test.QuickCheck
@@ -732,10 +733,33 @@ testsClass =
     ]
 
 ---------------------------------------------------------------------------------
+-- Properties for Math.Sym.Bijection
+---------------------------------------------------------------------------------
+
+prop_simionSchmidt_avoid =
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> (B.simionSchmidt w) `Sym.avoids` "132"
+
+prop_simionSchmidt_avoid' =
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> (B.simionSchmidt' w) `Sym.avoids` "123"
+
+prop_simionSchmidt_id =
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> (B.simionSchmidt' $ B.simionSchmidt w) == w
+
+prop_simionSchmidt_id' =
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> (B.simionSchmidt $ B.simionSchmidt' w) == w
+
+testsBijection =
+    [ ("simionSchmidt/avoid",   check prop_simionSchmidt_avoid)
+    , ("simionSchmidt'/avoid",  check prop_simionSchmidt_avoid')
+    , ("simionSchmidt/id",      check prop_simionSchmidt_id)
+    , ("simionSchmidt'/id",     check prop_simionSchmidt_id')
+    ]
+
+---------------------------------------------------------------------------------
 -- Main
 ---------------------------------------------------------------------------------
 
-tests = testsPerm ++ testsD8 ++ testsStat ++ testsClass
+tests = testsPerm ++ testsD8 ++ testsStat ++ testsClass ++ testsBijection
 
 runTests = mapM_ (\(name, t) -> putStr (name ++ ":\t") >> t)
 
