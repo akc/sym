@@ -10,11 +10,25 @@
 
 module Math.Sym.Class
     (
-     av231, vee, caret, gt, lt, wedges, separables
+      av123, av132, av213, av231, av312, av321
+    , vee, caret, gt, lt, wedges, separables
     ) where
 
 import Math.Sym (Perm, empty, one, (\+\), (/-/), ssum, normalize)
-import Math.Sym.D8 as D8
+import Math.Sym.Bijection (simionSchmidt')
+import qualified Math.Sym.D8 as D8
+
+-- | Av(123).
+av123 :: Perm a => Int -> [a]
+av123 = map simionSchmidt' . av132
+
+-- | Av(132).
+av132 :: Perm a => Int -> [a]
+av132 = map D8.reverse . av231
+
+-- | Av(213).
+av213 :: Perm a => Int -> [a]
+av213 = map D8.complement . av231
 
 -- | Av(231); also know as the stack sortable permutations.
 av231 :: Perm a => Int -> [a]
@@ -27,6 +41,14 @@ av231 n = do
 
 streamAv231 :: Perm a => [[a]]
 streamAv231 = map av231 [0..]
+
+-- | Av(312).
+av312 :: Perm a => Int -> [a]
+av312 = map D8.reverse . av213
+
+-- | Av(321).
+av321 :: Perm a => Int -> [a]
+av321 = map D8.complement . av123
 
 -- | The V-class is Av(132, 231). It is so named because the diagram
 -- of a typical permutation in this class is shaped like a V.
