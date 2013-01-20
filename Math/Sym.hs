@@ -36,9 +36,9 @@ module Math.Sym
     , cast
 
     -- * Constructions
-    , (\+\)
+    , (/+/)
     , dsum
-    , (/-/)
+    , (\-\)
     , ssum
     , inflate
 
@@ -321,24 +321,24 @@ cast = generalize id
 -- Constructions
 -- -------------
 
-infixl 6 \+\
-infixl 6 /-/
+infixl 6 /+/
+infixl 6 \-\
 
 -- | The /direct sum/ of two permutations.
-(\+\) :: Perm a => a -> a -> a
-(\+\) = generalize2 (<>)
+(/+/) :: Perm a => a -> a -> a
+(/+/) = generalize2 (<>)
 
 -- | The direct sum of a list of permutations.
 dsum :: Perm a => [a] -> a
-dsum = foldr (\+\) empty
+dsum = foldr (/+/) empty
 
 -- | The /skew sum/ of two permutations.
-(/-/) :: Perm a => a -> a -> a
-(/-/) = lift2 $ \u v -> SV.concat [SV.map ( + SV.length v) u, v]
+(\-\) :: Perm a => a -> a -> a
+(\-\) = lift2 $ \u v -> SV.concat [SV.map ( + SV.length v) u, v]
 
 -- | The skew sum of a list of permutations.
 ssum :: Perm a => [a] -> a
-ssum = foldr (/-/) empty
+ssum = foldr (\-\) empty
 
 -- | @inflate w vs@ is the /inflation/ of @w@ by @vs@. It is the
 -- permutation of length @sum (map size vs)@ obtained by replacing
@@ -346,8 +346,8 @@ ssum = foldr (/-/) empty
 -- in such a way that the intervals are order isomorphic to @w@. In
 -- particular,
 -- 
--- > u \+\ v == inflate "12" [u,v]
--- > u /-/ v == inflate "21" [u,v]
+-- > u /+/ v == inflate "12" [u,v]
+-- > u \-\ v == inflate "21" [u,v]
 -- 
 inflate :: (Perm a, Perm b) => b -> [a] -> a
 inflate w vs = lift (\v -> I.inflate v (map toVector vs)) w

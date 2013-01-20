@@ -120,7 +120,7 @@ prop_monoid_associative_S u v w = u <> (v <> w) == (u <> v) <> (w :: S)
 
 instance Monoid S where
     mempty = S $ Sym.fromVector SV.empty
-    mappend u v = S $ (Sym./-/) (unS u) (unS v)
+    mappend u v = S $ (Sym.\-\) (unS u) (unS v)
 
 neutralize :: Sym.Perm a => a -> a
 neutralize = Sym.idperm . Sym.size
@@ -239,10 +239,10 @@ prop_components = (components . st) `forAllPermEq` (SV.toList . Sym.components)
 prop_skewComponents = (skewComponents . st) `forAllPermEq` (SV.toList . Sym.skewComponents)
 
 prop_dsum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym.\+\) u v == Sym.inflate "12" [u,v]
+            forAll perm $ \v -> (Sym./+/) u v == Sym.inflate "12" [u,v]
 
 prop_ssum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym./-/) u v == Sym.inflate "21" [u,v]
+            forAll perm $ \v -> (Sym.\-\) u v == Sym.inflate "21" [u,v]
 
 inflate :: [Int] -> [[Int]] -> [Int]
 inflate w vs = sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ] >>= snd

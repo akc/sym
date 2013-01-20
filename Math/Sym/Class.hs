@@ -10,11 +10,11 @@
 
 module Math.Sym.Class
     (
-      av123, av132, av213, av231, av312, av321
+    , av123, av132, av213, av231, av312, av321
     , vee, caret, gt, lt, wedges, separables
     ) where
 
-import Math.Sym (Perm, empty, one, (\+\), (/-/), ssum, normalize)
+import Math.Sym (Perm, empty, one, idperm, (/+/), (\-\), ssum, normalize)
 import Math.Sym.Bijection (simionSchmidt')
 import qualified Math.Sym.D8 as D8
 
@@ -37,7 +37,7 @@ av231 n = do
   k <- [0..n-1]
   s <- streamAv231 !! k
   t <- streamAv231 !! (n-k-1)
-  return $ s \+\ (one /-/ t)
+  return $ s /+/ (one \-\ t)
 
 streamAv231 :: Perm a => [[a]]
 streamAv231 = map av231 [0..]
@@ -58,8 +58,8 @@ vee = (streamVee !!)
 streamVee :: Perm a => [[a]]
 streamVee = [empty] : [one] : zipWith (++) vee_n n_vee
     where
-      n_vee = (map.map) (one /-/) ws
-      vee_n = (map.map) (\+\ one) ws
+      n_vee = (map.map) (one \-\) ws
+      vee_n = (map.map) (/+/ one) ws
       ws    = tail streamVee
 
 -- | The ∧-class is Av(213, 312). It is so named because the diagram
