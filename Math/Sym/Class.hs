@@ -10,6 +10,7 @@
 
 module Math.Sym.Class
     (
+      inc, dec
     , av123, av132, av213, av231, av312, av321
     , vee, caret, gt, lt, wedges, separables
     ) where
@@ -17,6 +18,14 @@ module Math.Sym.Class
 import Math.Sym (Perm, empty, one, idperm, (/+/), (\-\), ssum, normalize)
 import Math.Sym.Bijection (simionSchmidt')
 import qualified Math.Sym.D8 as D8
+
+-- | The class of increasing permutations.
+inc :: Perm a => Int -> [a]
+inc n = [idperm n]
+
+-- | The class of decreasing permutations.
+dec :: Perm a => Int -> [a]
+dec n = [D8.complement (idperm n)]
 
 -- | Av(123).
 av123 :: Perm a => Int -> [a]
