@@ -59,112 +59,112 @@ import qualified Math.Sym.Internal as I
     , head, last, lir, ldr, rir, rdr, comp, scomp, ep, dim, asc0, des0
     )
 
-generalize :: Perm a => (Perm0 -> b) -> a -> b
-generalize f = f . toVector . st
+liftStat :: Perm a => (Perm0 -> b) -> a -> b
+liftStat f = f . toVector
 
 -- | The number of ascents. An /ascent/ in @w@ is an index @i@ such
 -- that @w[i] \< w[i+1]@.
 asc :: Perm a => a -> Int
-asc = generalize I.asc
+asc = liftStat I.asc
 
 -- | The number of descents. A /descent/ in @w@ is an index @i@ such
 -- that @w[i] > w[i+1]@.
 des :: Perm a => a -> Int
-des = generalize I.des
+des = liftStat I.des
 
 -- | The number of /excedances/: positions @i@ such that @w[i] > i@.
 exc :: Perm a => a -> Int
-exc = generalize I.exc
+exc = liftStat I.exc
 
 -- | The number of /fixed points/: positions @i@ such that @w[i] == i@.
 fp :: Perm a => a -> Int
-fp = generalize I.fp
+fp = liftStat I.fp
 
 -- | The number of /cycles/: orbits of the permutation when viewed as a function.
 cyc :: Perm a => a -> Int
-cyc = generalize I.cyc
+cyc = liftStat I.cyc
 
 -- | The number of /inversions/: pairs @\(i,j\)@ such that @i \< j@ and @w[i] > w[j]@.
 inv :: Perm a => a -> Int
-inv = generalize I.inv
+inv = liftStat I.inv
 
 -- | /The major index/ is the sum of descents.
 maj :: Perm a => a -> Int
-maj = generalize I.maj
+maj = liftStat I.maj
 
 -- | /The co-major index/ is the sum of descents.
 comaj :: Perm a => a -> Int
-comaj = generalize I.comaj
+comaj = liftStat I.comaj
 
 -- | The number of /peaks/: positions @i@ such that @w[i-1] \< w[i]@ and @w[i] \> w[i+1]@.
 peak :: Perm a => a -> Int
-peak = generalize I.peak
+peak = liftStat I.peak
 
 -- | The number of /valleys/: positions @i@ such that @w[i-1] \> w[i]@ and @w[i] \< w[i+1]@.
 vall :: Perm a => a -> Int
-vall = generalize I.vall
+vall = liftStat I.vall
 
 -- | The number of /double ascents/: positions @i@ such that @w[i-1] \<  w[i] \< w[i+1]@.
 dasc :: Perm a => a -> Int
-dasc = generalize I.dasc
+dasc = liftStat I.dasc
 
 -- | The number of /double descents/: positions @i@ such that @w[i-1] \>  w[i] \> w[i+1]@.
 ddes :: Perm a => a -> Int
-ddes = generalize I.ddes
+ddes = liftStat I.ddes
 
 -- | The number of /left-to-right minima/: positions @i@ such that @w[i] \< w[j]@ for all @j \< i@.
 lmin :: Perm a => a -> Int
-lmin = generalize I.lmin
+lmin = liftStat I.lmin
 
 -- | The number of /left-to-right maxima/: positions @i@ such that @w[i] \> w[j]@ for all @j \< i@.
 lmax :: Perm a => a -> Int
-lmax = generalize I.lmax
+lmax = liftStat I.lmax
 
 -- | The number of /right-to-left minima/: positions @i@ such that @w[i] \< w[j]@ for all @j \> i@.
 rmin :: Perm a => a -> Int
-rmin = generalize I.rmin
+rmin = liftStat I.rmin
 
 -- | The number of /right-to-left maxima/: positions @i@ such that @w[i] \> w[j]@ for all @j \> i@.
 rmax :: Perm a => a -> Int
-rmax = generalize I.rmax
+rmax = liftStat I.rmax
 
 -- | The first (left-most) element in the standardization. E.g., @head \"231\" = head (fromList [1,2,0]) = 1@.
 head :: Perm a => a -> Int
-head = generalize I.head
+head = liftStat I.head
 
 -- | The last (right-most) element in the standardization. E.g., @last \"231\" = last (fromList [1,2,0]) = 0@.
 last :: Perm a => a -> Int
-last = generalize I.last
+last = liftStat I.last
 
 -- | Length of the left-most increasing run: largest @i@ such that
 -- @w[0] \< w[1] \< ... \< w[i-1]@.
 lir :: Perm a => a -> Int
-lir = generalize I.lir
+lir = liftStat I.lir
 
 -- | Length of the left-most decreasing run: largest @i@ such that
 -- @w[0] \> w[1] \> ... \> w[i-1]@.
 ldr :: Perm a => a -> Int
-ldr = generalize I.ldr
+ldr = liftStat I.ldr
 
 -- | Length of the right-most increasing run: largest @i@ such that
 -- @w[n-i] \< ... \< w[n-2] \< w[n-1]@.
 rir :: Perm a => a -> Int
-rir = generalize I.rir
+rir = liftStat I.rir
 
 -- | Length of the right-most decreasing run: largest @i@ such that
 -- @w[n-i] \> ... \> w[n-2] \> w[n-1]@.
 rdr :: Perm a => a -> Int
-rdr = generalize I.rdr
+rdr = liftStat I.rdr
 
 -- | The number of components. E.g., @[2,0,3,1,4,6,7,5]@ has three
 -- components: @[2,0,3,1]@, @[4]@ and @[6,7,5]@.
 comp :: Perm a => a -> Int
-comp = generalize I.comp
+comp = liftStat I.comp
 
 -- | The number of skew components. E.g., @[5,7,4,6,3,1,0,2]@ has three
 -- skew components: @[5,7,4,6]@, @[3]@ and @[1,0,2]@.
 scomp :: Perm a => a -> Int
-scomp = generalize I.scomp
+scomp = liftStat I.scomp
 
 -- | The rank as defined by Elizalde and Pak [Bijections for
 -- refined restricted permutations, /J. Comb. Theory, Ser. A/, 2004]:
@@ -172,22 +172,22 @@ scomp = generalize I.scomp
 -- > maximum [ k | k <- [0..n-1], w[i] >= k for all i < k ]
 -- 
 ep :: Perm a => a -> Int
-ep = generalize I.ep
+ep = liftStat I.ep
 
 -- | The dimension of a permutation is defined as the largest
 -- non-fixed-point, or zero if all points are fixed.
 dim :: Perm a => a -> Int
-dim = generalize I.dim
+dim = liftStat I.dim
 
 -- | The number of small ascents. A /small ascent/ in @w@ is an index
 -- @i@ such that @w[i] + 1 == w[i+1]@.
 asc0 :: Perm a => a -> Int
-asc0 = generalize I.asc0
+asc0 = liftStat I.asc0
 
 -- | The number of small descents. A /small descent/ in @w@ is an
 -- index @i@ such that @w[i] == w[i+1] + 1@.
 des0 :: Perm a => a -> Int
-des0 = generalize I.des0
+des0 = liftStat I.des0
 
 -- | The size of the shadow of @w@. That is, the number of different
 -- one point deletions of @w@.

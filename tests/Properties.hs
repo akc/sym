@@ -306,7 +306,7 @@ prop_copies_d8 (Symmetry (f,_)) =
     forAll (resize  6 arbitrary) $ \p ->
     forAll (resize 20 perm)      $ \w ->
         let p' = f p
-            w' = Sym.generalize f w :: [Int]
+            w' = (Sym.unst . f . Sym.st) w :: [Int]
         in Sym.stat p w == Sym.stat p' w'
 
 prop_avoiders_avoid =
@@ -737,16 +737,16 @@ testsClass =
 ---------------------------------------------------------------------------------
 
 prop_simionSchmidt_avoid =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> (B.simionSchmidt w) `Sym.avoids` "132"
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> B.simionSchmidt w `Sym.avoids` "132"
 
 prop_simionSchmidt_avoid' =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> (B.simionSchmidt' w) `Sym.avoids` "123"
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> B.simionSchmidt' w `Sym.avoids` "123"
 
 prop_simionSchmidt_id =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> (B.simionSchmidt' $ B.simionSchmidt w) == w
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> B.simionSchmidt' (B.simionSchmidt w) == w
 
 prop_simionSchmidt_id' =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> (B.simionSchmidt $ B.simionSchmidt' w) == w
+    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> B.simionSchmidt (B.simionSchmidt' w) == w
 
 testsBijection =
     [ ("simionSchmidt/avoid",   check prop_simionSchmidt_avoid)

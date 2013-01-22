@@ -30,8 +30,6 @@ module Math.Sym
     , bijection
     , lift
     , lift2
-    , generalize
-    , generalize2
     , normalize
     , cast
 
@@ -145,10 +143,9 @@ sym = perms
 -- The permutation typeclass
 -- -------------------------
 
--- | The class of permutations. Minimal complete definition: 'st'
--- 'act' and 'idperm'. The default implementations of 'size' and
--- 'neutralize' can be somewhat slow, so you may want to implement
--- them as well.
+-- | The class of permutations. Minimal complete definition: 'st',
+-- 'act' and 'idperm'. The default implementation of 'size' can be
+-- somewhat slow, so you may want to implement it as well.
 class Perm a where
 
     -- | The standardization map. If there is an underlying linear
@@ -164,8 +161,9 @@ class Perm a where
     -- | A (left) /group action/ of 'StPerm' on @a@. As for any group
     -- action it should hold that
     -- 
-    -- > (u `act` v) `act` w == u `act` (v `act` w)   &&   neutralize u `act` v == v
+    -- > (u `act` v) `act` w == u `act` (v `act` w)   &&   idperm n `act` v == v
     -- 
+    -- where @v,w::a@ and @u::StPerm@ are of size @n@.
     act :: StPerm -> a -> a
 
     -- | The size of a permutation. The default implementation derived from
@@ -290,21 +288,21 @@ fromVector = unst . StPerm
 bijection :: Perm a => a -> Int -> Int
 bijection w = (SV.!) v where v = toVector w
 
+-- | Lift a function on 'Vector Int' to a function on any permutations:
+-- 
+-- > lift f = fromVector . f . toVector
+-- 
 lift :: (Perm a, Perm b) => (Vector Int -> Vector Int) -> a -> b
 lift f = fromVector . f . toVector
 
+-- | Like 'lift' but for functions of two variables
 lift2 :: (Perm a, Perm b, Perm c) =>
          (Vector Int -> Vector Int -> Vector Int) -> a -> b -> c
 lift2 f u v = fromVector $ f (toVector u) (toVector v)
 
--- | Generalize a function on 'StPerm' to a function on any permutations:
--- 
--- > generalize f = unst . f . st
--- 
 generalize :: (Perm a, Perm b) => (StPerm -> StPerm) -> a -> b
 generalize f = unst . f . st
 
--- | Like 'generalize' but for functions of two variables
 generalize2 :: (Perm a, Perm b, Perm c) => (StPerm -> StPerm -> StPerm) -> a -> b -> c
 generalize2 f u v = unst $ f (st u) (st v)
 
