@@ -191,7 +191,7 @@ toList = SV.toList
 fromList :: [Int] -> Perm0
 fromList = SV.fromList
 
--- | @act u v@ is the permutation /w/ defined by /w(u(i)) = v(i)/.
+-- | @u `act` v@ is the permutation /w/ defined by /w(u(i)) = v(i)/.
 act :: Perm0 -> Perm0 -> Perm0
 act u v = runST $ do
   let n = size u

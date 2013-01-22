@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      : Math.Sym
@@ -21,6 +22,9 @@ module Math.Sym
 
     -- * The permutation typeclass
     , Perm (..)
+
+    -- * IntMaps as permutations
+    , Perm2
 
     -- * Convenience functions
     , empty
@@ -50,12 +54,8 @@ module Math.Sym
     , bubbleSort
 
     -- * Permutation patterns
-    , copiesOf
+    , Pattern (..)
     , stat
-    , contains
-    , avoids
-    , avoidsAll
-    , avoiders
     , av
     , permClass
 
@@ -94,6 +94,10 @@ import Data.Monoid (Monoid(..),(<>))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
 import Data.Vector.Storable (Vector)
+import Data.IntMap (IntMap, (!))
+import qualified Data.IntMap as M
+    ( empty, size, elems, fromDistinctAscList, insert
+    )
 import qualified Data.Vector.Storable as SV
     ( (!), toList, fromList, fromListN, empty, singleton
     , length, map, concat, splitAt
@@ -263,6 +267,24 @@ instance Perm [Int] where
     idperm n   = [1..n]
 
 
+-- IntMaps as permutations
+-- -----------------------
+
+-- | Type alias for @IntMap Int@. This can be thought of as a
+-- permutations in two line notation.
+type Perm2 = IntMap Int
+
+instance Perm Perm2 where
+    st         = st . M.elems
+    size       = M.size
+    idperm n   = M.fromDistinctAscList [ (i,i) | i <- [1..n] ]
+
+    u `act` v  = foldr (\i -> M.insert (1 + (SV.!) u' i) (v!(i+1))) M.empty [0..n-1]
+        where
+          u' = toVector u
+          n  = SV.length u'
+
+
 -- Convenience functions
 -- ---------------------
 
@@ -389,53 +411,57 @@ bubbleSort = lift I.bubbleSort
 -- Permutation patterns
 -- --------------------
 
--- | @copiesOf p w@ is the list of (indices of) copies of the pattern
--- @p@ in the permutation @w@. E.g.,
--- 
--- > copiesOf "21" "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
--- 
-copiesOf :: (Perm a, Perm b) => b -> a -> [Set]
-copiesOf p w = I.copies subsets (toVector p) (toVector w)
+-- | Minimal complete definiton: 'copiesOf'.
+class Pattern a where
+    -- | @copiesOf p w@ is the list of indices of copies of the pattern
+    -- @p@ in the permutation @w@. E.g.,
+    -- 
+    -- > copiesOf "21" "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
+    -- 
+    copiesOf :: Perm b => a -> b -> [Set]
 
--- | @stat p@ the pattern @p@ when regarded as a statistic/function
+    -- | @w `contains` p@ is a predicate determining if @w@ contains the pattern @p@.
+    contains :: Perm b => b -> a -> Bool
+    w `contains` p = not $ w `avoids` p
+
+    -- | @w `avoids` p@ is a predicate determining if @w@ avoids the pattern @p@.
+    avoids :: Perm b => b -> a -> Bool
+    w `avoids` p = null $ copiesOf p w
+
+    -- | @w `avoidsAll` ps@ is a predicate determining if @w@ avoids the patterns @ps@.
+    avoidsAll :: Perm b => b -> [a] -> Bool
+    w `avoidsAll` ps = all (w `avoids`) ps
+
+    -- | @avoiders ps vs@ is the list of permutations in @vs@ avoiding the
+    -- patterns @ps@. The default definition is
+    -- 
+    -- > avoiders ps = filter (`avoidsAll` ps)
+    -- 
+    avoiders :: Perm b => [a] -> [b] -> [b]
+    avoiders ps = filter (`avoidsAll` ps)
+
+instance Perm a => Pattern a where
+    copiesOf p w = I.copies subsets (toVector p) (toVector w)
+    avoiders ps  = I.avoiders subsets toVector (map toVector ps)
+
+-- | @stat p@ is the pattern @p@ when regarded as a statistic/function
 -- counting copies of itself:
 -- 
 -- > stat p = length . copiesOf p
 -- 
-stat :: (Perm a, Perm b) => b -> a -> Int
+stat :: (Pattern a, Perm b) => a -> b -> Int
 stat p = length . copiesOf p
-
--- | @contains w p@ is a predicate determining if @w@ contains the pattern @p@.
-contains :: (Perm a, Perm b) => a -> b -> Bool
-w `contains` p = not $ w `avoids` p
-
--- | @avoids w p@ is a predicate determining if @w@ avoids the pattern @p@.
-avoids :: (Perm a, Perm b) => a -> b -> Bool
-w `avoids` p = null $ copiesOf p w
-
--- | @avoidsAll w ps@ is a predicate determining if @w@ avoids the patterns @ps@.
-avoidsAll :: (Perm a, Perm b) => a -> [b] -> Bool
-w `avoidsAll` ps = all (w `avoids`) ps
-
--- | @avoiders ps vs@ is the list of permutations in @vs@ avoiding the
--- patterns @ps@. This is equivalent to the definition
--- 
--- > avoiders ps = filter (`avoidsAll` ps)
--- 
--- but is usually much faster.
-avoiders :: (Perm a, Perm b) => [b] -> [a] -> [a]
-avoiders ps = I.avoiders subsets toVector (map toVector ps)
 
 -- | @av ps n@ is the list of permutations of @[0..n-1]@ avoiding the
 -- patterns @ps@. E.g.,
 -- 
 -- > map (length . av ["132","321"]) [1..8] == [1,2,4,7,11,16,22,29]
 -- 
-av :: Perm a => [a] -> Int -> [StPerm]
+av :: Pattern a => [a] -> Int -> [StPerm]
 av ps = avoiders ps . sym
 
 -- | Like 'av' but the return type is any set of permutations.
-permClass :: (Perm a, Perm b) => [a] -> Int -> [b]
+permClass :: (Pattern a, Perm b) => [a] -> Int -> [b]
 permClass ps = avoiders ps . perms
 
 
@@ -486,7 +512,11 @@ maxima ws = v : maxima [ u | u <- vs, v `avoids` u ]
       (v:vs) = reverse $ normalize ws
 
 -- | @coeff f v@ is the coefficient of @v@ when expanding the
--- permutation statistic @f@ as a sum of permutations/patterns.
+-- permutation statistic @f@ as a sum of permutations/patterns. See
+-- Petter Brändén and Anders Claesson: Mesh patterns and the expansion
+-- of permutation statistics as sums of permutation patterns, The
+-- Electronic Journal of Combinatorics 18(2) (2011),
+-- <http://www.combinatorics.org/ojs/index.php/eljc/article/view/v18i2p5>.
 coeff :: Perm a => (a -> Int) -> a -> Int
 coeff f v = f v + sum [ (-1)^(k - j) * c * f u |
                         j <- [0 .. k-1]
