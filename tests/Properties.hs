@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- Copyright   : (c) Anders Claesson 2012, 2013
 -- License     : BSD-style
@@ -8,6 +10,7 @@ import Data.List
 import Data.Monoid
 import Data.Function
 import Control.Monad
+import Math.Sym (StPerm, IntPerm(..), CharPerm(..))
 import qualified Math.Sym as Sym
 import qualified Math.Sym.D8 as D8
 import qualified Math.Sym.Stat as S
@@ -46,42 +49,45 @@ lenRank3 = do
   return (n, r1, r2, r3)
 
 -- The sub-permutation determined by a set of indices.
-subperm :: Sym.Set -> Sym.StPerm -> Sym.StPerm
+subperm :: Sym.Set -> StPerm -> StPerm
 subperm m w = Sym.fromVector . I.st $ SV.map ((SV.!) (Sym.toVector w)) m
 
-subperms :: Int -> Sym.StPerm -> [Sym.StPerm]
+subperms :: Int -> StPerm -> [StPerm]
 subperms k w = [ subperm m w | m <- Sym.subsets (Sym.size w) k ]
 
-instance Arbitrary Sym.StPerm where
+instance Arbitrary StPerm where
     arbitrary = uncurry Sym.unrankPerm `liftM` lenRank
     shrink w = nub $ [0 .. Sym.size w - 1] >>= \k -> subperms k w
 
-perm :: Gen [Int]
-perm = liftM (\w -> w `Sym.act` [1..Sym.size w]) arbitrary
+instance Arbitrary CharPerm where
+    arbitrary = Sym.cast `liftM` (arbitrary :: Gen StPerm)
 
-perm2 :: Gen (Sym.StPerm, [Int])
+instance Arbitrary IntPerm where
+    arbitrary = Sym.cast `liftM` (arbitrary :: Gen StPerm)
+
+perm2 :: Gen (StPerm, IntPerm)
 perm2 = do
   (n,r1,r2) <- lenRank2
   let u = Sym.unrankPerm n r1
   let v = Sym.unrankPerm n r2
-  return (u, v `Sym.act` [1..n])
+  return (u, v)
 
-perm3 :: Gen (Sym.StPerm, Sym.StPerm, [Int])
+perm3 :: Gen (StPerm, StPerm, IntPerm)
 perm3 = do
   (n,r1,r2,r3) <- lenRank3
   let u = Sym.unrankPerm n r1
   let v = Sym.unrankPerm n r2
   let w = Sym.unrankPerm n r3
-  return (u, v, w `Sym.act` [1..n])
+  return (u, v, w)
 
-stPermsOfEqualLength :: Gen [Sym.StPerm]
+stPermsOfEqualLength :: Gen [StPerm]
 stPermsOfEqualLength = sized $ \m -> do
   n  <- choose (0,m)
   k  <- choose (0,m^2)
   rs <- replicateM k $ rank n
   return $ nub $ map (Sym.unrankPerm n) rs
 
-newtype Symmetry = Symmetry (Sym.StPerm -> Sym.StPerm, String)
+newtype Symmetry = Symmetry (StPerm -> StPerm, String)
 
 d8Symmetries :: [Symmetry]
 d8Symmetries = [ Symmetry (D8.r0, "r0")
@@ -105,27 +111,27 @@ instance Arbitrary Symmetry where
 -- Properties for Math.Sym
 ---------------------------------------------------------------------------------
 
-prop_monoid_mempty1 w = mempty <> w == (w :: Sym.StPerm)
-prop_monoid_mempty2 w = w <> mempty == (w :: Sym.StPerm)
-prop_monoid_associative u v w = u <> (v <> w) == (u <> v) <> (w :: Sym.StPerm)
+prop_monoid_mempty1 w = mempty <> w == (w :: StPerm)
+prop_monoid_mempty2 w = w <> mempty == (w :: StPerm)
+prop_monoid_associative u v w = u <> (v <> w) == (u <> v) <> (w :: StPerm)
 
-newtype S = S {unS :: Sym.StPerm} deriving (Eq, Show)
+newtype S = S {unS :: StPerm} deriving (Eq, Show)
 
 instance Arbitrary S where
     arbitrary = liftM S arbitrary
-
-prop_monoid_mempty1_S w = mempty <> w == (w :: S)
-prop_monoid_mempty2_S w = w <> mempty == (w :: S)
-prop_monoid_associative_S u v w = u <> (v <> w) == (u <> v) <> (w :: S)
 
 instance Monoid S where
     mempty = S $ Sym.fromVector SV.empty
     mappend u v = S $ (Sym.\-\) (unS u) (unS v)
 
+prop_monoid_mempty1_S w = mempty <> w == (w :: S)
+prop_monoid_mempty2_S w = w <> mempty == (w :: S)
+prop_monoid_associative_S u v w = u <> (v <> w) == (u <> v) <> (w :: S)
+
 neutralize :: Sym.Perm a => a -> a
 neutralize = Sym.idperm . Sym.size
 
-forAllPermEq f g = forAll perm $ \w -> f w == g w
+forAllPermEq f g w = f w == g (w :: IntPerm)
 
 prop_unrankPerm_distinct =
     forAll lenRank $ \(n, r) ->
@@ -133,20 +139,20 @@ prop_unrankPerm_distinct =
 
 prop_unrankPerm_injective =
     forAll lenRank2 $ \(n, r1, r2) ->
-        (Sym.unrankPerm n r1 :: Sym.StPerm) /= Sym.unrankPerm n r2 || r1 == r2
+        (Sym.unrankPerm n r1 :: StPerm) /= Sym.unrankPerm n r2 || r1 == r2
 
 prop_sym = and [ sort (Sym.sym n) == sort (sym' n) | n<-[0..6] ]
     where
       sym' n = map Sym.fromList $ Data.List.permutations [0..fromIntegral n - 1]
 
 prop_perm =
-    and [ sort (Sym.perms n) == sort (permutations [1..n]) | n<-[0..6::Int] ]
+    and [ map ints (sort (Sym.perms n)) == sort (permutations [1..n]) | n<-[0..6::Int] ]
 
 prop_st =
     forAll perm2 $ \(u,v) -> Sym.st (u `Sym.act` v) == u `Sym.act` Sym.st v
 
 prop_act_def =
-    forAll perm2 $ \(u,v) -> u `Sym.act` v == map (v!!) (Sym.toList u)
+    forAll perm2 $ \(u,v) -> u `Sym.act` v == IntPerm (map (ints v !!) (Sym.toList u))
 
 prop_act_id =
     forAll perm2 $ \(u,v) -> neutralize u `Sym.act` v == v
@@ -158,8 +164,7 @@ prop_size = Sym.size `forAllPermEq` (Sym.size . Sym.st)
 
 prop_neutralize = neutralize `forAllPermEq` (\u -> Sym.inverse (Sym.st u) `Sym.act` u)
 
-prop_inverse =
-    forAllPermEq Sym.inverse $ \v -> Sym.inverse (Sym.st v) `Sym.act` neutralize v
+prop_inverse = forAllPermEq Sym.inverse $ \v -> Sym.inverse (Sym.st v) `Sym.act` neutralize v
 
 prop_ordiso1 =
     forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
@@ -177,16 +182,16 @@ shadow w = nubsort . map normalize $ ptDeletions w
       ptDeletions [] = []
       ptDeletions xs@(x:xt) = xt : map (x:) (ptDeletions xt)
 
-prop_shadow = forAll (resize 30 perm) $ \w -> Sym.shadow [w] == shadow w
+prop_shadow = forAll (resize 30 arbitrary) $ \w -> Sym.shadow [w] == map IntPerm (shadow (ints w))
 
 prop_downset_shadow =
-    forAll (resize 10 perm) $ \w ->
-        [ v | v <- Sym.downset [w], 1 + length v == length w ] == Sym.shadow [w]
+    forAll (resize 10 arbitrary) $ \w ->
+        [ v | v <- Sym.downset [w], 1 + Sym.size v == Sym.size w ] == Sym.shadow [w :: CharPerm]
 
 prop_downset_orderideal =
-    forAll (resize 9 perm) $ \w -> null [ v | v <- Sym.downset [w]
-                                        , w `Sym.avoids` v
-                                        ]
+    forAll (resize 9 arbitrary) $ \w -> null [ v | v <- Sym.downset [w :: CharPerm]
+                                             , w `Sym.avoids` v
+                                             ]
 
 coshadow :: Integral a => [a] -> [[Int]]
 coshadow w = nub . sort . map (map (+1) . st) $ [0..length w] >>= \i ->
@@ -195,28 +200,29 @@ coshadow w = nub . sort . map (map (+1) . st) $ [0..length w] >>= \i ->
       ptExtensions n [] = [[n]]
       ptExtensions n xs@(x:xt) = (n:xs) : map (x:) (ptExtensions n xt)
 
-prop_coshadow = forAll (resize 12 perm) $ \w -> Sym.coshadow [w] == coshadow w
+prop_coshadow = forAll (resize 12 arbitrary) $ \w -> Sym.coshadow [w] == map IntPerm (coshadow (ints w))
 
 prop_coeff =
-    forAll (resize 5 perm) $ \u ->
-        forAll (resize 6 perm) $ \v -> Sym.coeff (Sym.stat u) v == fromEnum (u==v)
+    forAll (resize 5 arbitrary) $ \u ->
+    forAll (resize 6 arbitrary) $ \v ->
+        Sym.coeff (Sym.stat u) (v :: CharPerm) == fromEnum (u==v)
 
 prop_minima_antichain =
     forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ (v::Sym.StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
+        let vs = Sym.minima ws in and [ (v::StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
 
 prop_minima_smallest =
     forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ not ((w::Sym.StPerm) `Sym.avoidsAll` vs) | w <- ws ]
+        let vs = Sym.minima ws in and [ not ((w::StPerm) `Sym.avoidsAll` vs) | w <- ws ]
 
 prop_maxima_antichain =
     forAll (resize 12 arbitrary) $ \ws ->
-        let vs = Sym.maxima ws in and [ (v::Sym.StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
+        let vs = Sym.maxima ws in and [ (v::StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
 
-recordIndicesAgree f g =
-    forAll perm $ \w -> SV.fromList (recordIndices w) == f w
-        where
-          recordIndices w = [ head $ elemIndices x w | x <- g w ]
+recordIndicesAgree f g w = SV.fromList (recordIndices w) == f w
+    where
+      w' = ints w
+      recordIndices w = [ head $ elemIndices x w' | x <- g w' ]
 
 prop_lMaxima = recordIndicesAgree Sym.lMaxima lMaxima
 prop_lMinima = recordIndicesAgree Sym.lMinima lMinima
@@ -234,15 +240,13 @@ components w = lMaxima w `cap` rMinima (bubble w)
 -- The list of indices of skew components in a permutation
 skewComponents w = components $ map (\x -> length w - x - 1) w
 
-prop_components = (components . st) `forAllPermEq` (SV.toList . Sym.components)
+prop_components = (components . st . ints) `forAllPermEq` (SV.toList . Sym.components)
 
-prop_skewComponents = (skewComponents . st) `forAllPermEq` (SV.toList . Sym.skewComponents)
+prop_skewComponents = (skewComponents . st . ints) `forAllPermEq` (SV.toList . Sym.skewComponents)
 
-prop_dsum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym./+/) u v == Sym.inflate "12" [u,v]
+prop_dsum u v = (Sym./+/) u v == Sym.inflate ("12" :: CharPerm) [u, v :: CharPerm]
 
-prop_ssum = forAll perm $ \u ->
-            forAll perm $ \v -> (Sym.\-\) u v == Sym.inflate "21" [u,v]
+prop_ssum u v = (Sym.\-\) u v == Sym.inflate ("21" :: CharPerm) [u, v :: CharPerm]
 
 inflate :: [Int] -> [[Int]] -> [Int]
 inflate w vs = sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ] >>= snd
@@ -250,13 +254,9 @@ inflate w vs = sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ] >>= snd
       (_, w',us) = unzip3 . sort $ zip3 w [0..] vs
       cs = scanl (\i u -> i + length u) 0 us
 
-prop_inflate =
-    forAll perm $ \u0 ->
-    forAll perm $ \u1 ->
-    forAll perm $ \u2 ->
-    forAll perm $ \u3 ->
-        let us = [u0, u1, u2, u3]
-        in and [ inflate w us == Sym.inflate w us | w <- permutations [1..4] ]
+prop_inflate u0 u1 u2 u3 =
+    let us = [u0, u1, u2, u3]
+    in and [ IntPerm (inflate w (map ints us)) == Sym.inflate (IntPerm w) us | w <- permutations [1..4] ]
 
 segments :: [a] -> [[a]]
 segments [] = [[]]
@@ -277,47 +277,46 @@ properIntervals xs = [ ys | ys <- yss, sort ys `elem` zss ]
 simple :: Ord a => [a] -> Bool
 simple = null . properIntervals
 
-prop_simple = forAll (resize 40 perm) $ \w -> Sym.simple w == simple w
+prop_simple = forAll (resize 40 arbitrary) $ \w -> Sym.simple w == simple (ints w)
 
-prop_stackSort = Sym.stackSort `forAllPermEq` stack
+prop_stackSort = Sym.stackSort `forAllPermEq` (IntPerm . stack . ints)
 
 prop_stackSort_231 =
-  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` "231")
+  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` ("231" :: CharPerm))
 
-prop_bubbleSort = Sym.bubbleSort `forAllPermEq` bubble
+prop_bubbleSort = Sym.bubbleSort `forAllPermEq` (IntPerm . bubble . ints)
 
-prop_bubbleSort_231_321 = forAllPermEq f g
+prop_bubbleSort_231_321 = f `forAllPermEq` g
     where f v = Sym.bubbleSort v == neutralize v
-          g v = v `Sym.avoidsAll` ["231", "321"]
+          g v = v `Sym.avoidsAll` ["231", "321" :: CharPerm]
 
 prop_subperm_copies p =
-    forAll (resize 21 perm) $ \w ->
-        and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p w ]
+    forAll (resize 21 arbitrary) $ \w ->
+        and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p (w :: CharPerm) ]
 
 prop_copies =
     forAll (resize  6 arbitrary) $ \p ->
-    forAll (resize 12 perm)      $ \w ->
-        sort (Sym.copiesOf p w) == sort (map I.fromList $ copies (Sym.toList p) w)
+    forAll (resize 12 arbitrary) $ \w ->
+        sort (Sym.copiesOf p w) == sort (map I.fromList $ copies (Sym.toList p) (ints w))
 
-prop_copies_self =
-    forAll perm $ \v -> Sym.copiesOf v v == [SV.fromList [0 .. length v - 1]]
+prop_copies_self v = Sym.copiesOf v (v :: CharPerm) == [SV.fromList [0 .. Sym.size v - 1]]
 
 prop_copies_d8 (Symmetry (f,_)) =
     forAll (resize  6 arbitrary) $ \p ->
-    forAll (resize 20 perm)      $ \w ->
+    forAll (resize 20 arbitrary) $ \w ->
         let p' = f p
-            w' = (Sym.unst . f . Sym.st) w :: [Int]
-        in Sym.stat p w == Sym.stat p' w'
+            w' = (Sym.unst . f . Sym.st) (w :: CharPerm)
+        in Sym.stat p w == Sym.stat p' (w' :: CharPerm)
 
 prop_avoiders_avoid =
     forAll (resize 20 arbitrary) $ \ws ->
     forAll (resize  6 arbitrary) $ \ps ->
-        all (`Sym.avoidsAll` ps) $ Sym.avoiders (ps :: [Sym.StPerm]) (ws :: [Sym.StPerm])
+        all (`Sym.avoidsAll` ps) $ Sym.avoiders (ps :: [StPerm]) (ws :: [StPerm])
 
 prop_avoiders_idempotent =
     forAll (resize 18 arbitrary) $ \vs ->
     forAll (resize  5 arbitrary) $ \ps ->
-        let ws = Sym.avoiders (ps :: [Sym.StPerm]) (vs :: [Sym.StPerm])
+        let ws = Sym.avoiders (ps :: [StPerm]) (vs :: [StPerm])
         in  ws == Sym.avoiders ps ws
 
 prop_avoiders_d8 (Symmetry (f,_)) =
@@ -335,11 +334,11 @@ prop_avoiders_d8' (Symmetry (f,_)) =
 prop_avoiders_d8'' (Symmetry (f,_)) =
     forAll (resize 18 arbitrary) $ \ws ->
     forAll (resize  5 arbitrary) $ \ps ->
-        sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws :: [Sym.StPerm]))
+        sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws :: [StPerm]))
 
 prop_av_cardinality =
     forAll (resize 3 arbitrary) $ \p ->
-        let spec = [ length $ Sym.av [p :: Sym.StPerm] n | n<-[0..6] ]
+        let spec = [ length $ Sym.av [p :: StPerm] n | n<-[0..6] ]
         in case Sym.size p of
              0 -> spec == [0,0,0,0,0,0,0]
              1 -> spec == [1,0,0,0,0,0,0]
@@ -462,7 +461,7 @@ fn (Symmetry (f,_)) = f
 
 prop_D8_orbit fs w = all (`elem` orbD8) $ D8.orbit (map fn fs) w
     where
-      orbD8 = D8.orbit D8.d8 (w :: Sym.StPerm)
+      orbD8 = D8.orbit D8.d8 (w :: StPerm)
 
 symmetriesAgrees f g = (f . Sym.toVector) `forAllPermEq` (Sym.toVector . g)
 
@@ -645,36 +644,36 @@ dasc = length . doubleAscents
 ddes = length . doubleDescents
 shad = length . shadow
 
-prop_asc    = forAllPermEq asc   S.asc
-prop_des    = forAllPermEq des   S.des
-prop_exc    = forAllPermEq exc   S.exc
-prop_fp     = forAllPermEq fp    S.fp
-prop_cyc    = forAllPermEq cyc   S.cyc
-prop_inv    = forAllPermEq inv   S.inv
-prop_maj    = forAllPermEq maj   S.maj
-prop_comaj  = forAllPermEq comaj S.comaj
-prop_lmin   = forAllPermEq lmin  S.lmin
-prop_lmax   = forAllPermEq lmax  S.lmax
-prop_rmin   = forAllPermEq rmin  S.rmin
-prop_rmax   = forAllPermEq rmax  S.rmax
-prop_head   = forAll perm $ \w -> not (null w) ==> head w == 1 + S.head w
-prop_last   = forAll perm $ \w -> not (null w) ==> last w == 1 + S.last w
-prop_peak   = forAllPermEq peak  S.peak
-prop_vall   = forAllPermEq vall  S.vall
-prop_dasc   = forAllPermEq dasc  S.dasc
-prop_ddes   = forAllPermEq ddes  S.ddes
-prop_ep     = forAllPermEq ep    S.ep
-prop_lir    = forAllPermEq lir   S.lir
-prop_ldr    = forAllPermEq ldr   S.ldr
-prop_rir    = forAllPermEq rir   S.rir
-prop_rdr    = forAllPermEq rdr   S.rdr
-prop_comp   = forAllPermEq comp  S.comp
-prop_scomp  = forAllPermEq scomp S.scomp
-prop_dim    = forAllPermEq dim   S.dim
-prop_asc0   = forAllPermEq asc0  S.asc0
-prop_des0   = forAllPermEq des0  S.des0
-prop_shad   = forAllPermEq shad  S.shad
-prop_inv_21 = forAll (resize 30 perm) $ \w -> S.inv w == Sym.stat "21" w
+prop_asc    = forAllPermEq  (asc   . ints)  S.asc
+prop_des    = forAllPermEq  (des   . ints)  S.des
+prop_exc    = forAllPermEq  (exc   . ints)  S.exc
+prop_fp     = forAllPermEq  (fp    . ints)  S.fp
+prop_cyc    = forAllPermEq  (cyc   . ints)  S.cyc
+prop_inv    = forAllPermEq  (inv   . ints)  S.inv
+prop_maj    = forAllPermEq  (maj   . ints)  S.maj
+prop_comaj  = forAllPermEq  (comaj . ints)  S.comaj
+prop_lmin   = forAllPermEq  (lmin  . ints)  S.lmin
+prop_lmax   = forAllPermEq  (lmax  . ints)  S.lmax
+prop_rmin   = forAllPermEq  (rmin  . ints)  S.rmin
+prop_rmax   = forAllPermEq  (rmax  . ints)  S.rmax
+prop_head w = (w /= Sym.empty) ==> head (ints w) == 1 + S.head w
+prop_last w = (w /= Sym.empty) ==> last (ints w) == 1 + S.last w
+prop_peak   = forAllPermEq  (peak  . ints)  S.peak
+prop_vall   = forAllPermEq  (vall  . ints)  S.vall
+prop_dasc   = forAllPermEq  (dasc  . ints)  S.dasc
+prop_ddes   = forAllPermEq  (ddes  . ints)  S.ddes
+prop_ep     = forAllPermEq  (ep    . ints)  S.ep
+prop_lir    = forAllPermEq  (lir   . ints)  S.lir
+prop_ldr    = forAllPermEq  (ldr   . ints)  S.ldr
+prop_rir    = forAllPermEq  (rir   . ints)  S.rir
+prop_rdr    = forAllPermEq  (rdr   . ints)  S.rdr
+prop_comp   = forAllPermEq  (comp  . ints)  S.comp
+prop_scomp  = forAllPermEq  (scomp . ints)  S.scomp
+prop_dim    = forAllPermEq  (dim   . ints)  S.dim
+prop_asc0   = forAllPermEq  (asc0  . ints)  S.asc0
+prop_des0   = forAllPermEq  (des0  . ints)  S.des0
+prop_shad   = forAllPermEq  (shad  . ints)  S.shad
+prop_inv_21 = forAll (resize 30 arbitrary) $ \w -> S.inv (w :: IntPerm) == Sym.stat ("21" :: CharPerm) w
 
 testsStat =
     [ ("asc",          check prop_asc)
@@ -716,12 +715,12 @@ testsStat =
 agreesWithBasis bs cls m =
     and [ sort (Sym.av (map Sym.st bs) n) == sort (cls n) | n<-[0..m] ]
 
-prop_av231      = agreesWithBasis ["231"]          C.av231      7
-prop_vee        = agreesWithBasis ["132", "231"]   C.vee        7
-prop_caret      = agreesWithBasis ["213", "312"]   C.caret      7
-prop_gt         = agreesWithBasis ["132", "312"]   C.gt         7
-prop_lt         = agreesWithBasis ["213", "231"]   C.lt         7
-prop_separables = agreesWithBasis ["2413", "3142"] C.separables 7
+prop_av231      = agreesWithBasis ["231" :: CharPerm]          C.av231      7
+prop_vee        = agreesWithBasis ["132", "231" :: CharPerm]   C.vee        7
+prop_caret      = agreesWithBasis ["213", "312" :: CharPerm]   C.caret      7
+prop_gt         = agreesWithBasis ["132", "312" :: CharPerm]   C.gt         7
+prop_lt         = agreesWithBasis ["213", "231" :: CharPerm]   C.lt         7
+prop_separables = agreesWithBasis ["2413", "3142" :: CharPerm] C.separables 7
 
 testsClass =
     [ ("av231",        check prop_av231)
@@ -737,16 +736,20 @@ testsClass =
 ---------------------------------------------------------------------------------
 
 prop_simionSchmidt_avoid =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> B.simionSchmidt w `Sym.avoids` "132"
+    forAll (resize 15 arbitrary) $ \w ->
+        (w :: CharPerm) `Sym.avoids` ("123" :: CharPerm) ==> B.simionSchmidt w `Sym.avoids` ("132" :: CharPerm)
 
 prop_simionSchmidt_avoid' =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> B.simionSchmidt' w `Sym.avoids` "123"
+    forAll (resize 15 arbitrary) $ \w ->
+        (w :: CharPerm) `Sym.avoids` ("132" :: CharPerm) ==> B.simionSchmidt' w `Sym.avoids` ("123" :: CharPerm)
 
 prop_simionSchmidt_id =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "123" ==> B.simionSchmidt' (B.simionSchmidt w) == w
+    forAll (resize 15 arbitrary) $ \w ->
+        (w :: CharPerm) `Sym.avoids` ("123" :: CharPerm) ==> B.simionSchmidt' (B.simionSchmidt w) == w
 
 prop_simionSchmidt_id' =
-    forAll (resize 15 perm) $ \w -> w `Sym.avoids` "132" ==> B.simionSchmidt (B.simionSchmidt' w) == w
+    forAll (resize 15 arbitrary) $ \w ->
+        (w :: CharPerm) `Sym.avoids` ("132" :: CharPerm) ==> B.simionSchmidt (B.simionSchmidt' w) == w
 
 testsBijection =
     [ ("simionSchmidt/avoid",   check prop_simionSchmidt_avoid)

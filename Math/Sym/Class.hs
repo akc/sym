@@ -86,11 +86,11 @@ gt = map D8.rotate . vee
 lt :: Perm a => Int -> [a]
 lt = map D8.reverse . gt
 
-union :: (Ord a, Perm a) => [Int -> [a]] -> Int -> [a]
+union :: Perm a => [Int -> [a]] -> Int -> [a]
 union cs n = normalize $ concat [ c n | c <- cs ]
 
 -- | The union of 'vee', 'caret', 'gt' and 'lt'.
-wedges :: (Ord a, Perm a) => Int -> [a]
+wedges :: Perm a => Int -> [a]
 wedges = union [vee, caret, gt, lt]
 
 compositions :: Int -> Int -> [[Int]]

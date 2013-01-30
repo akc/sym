@@ -99,12 +99,12 @@ klein4 = [r0, r2, s0, s1]
 -- 
 -- > orbit klein4 "2314" == ["1423","2314","3241","4132"]
 -- 
-orbit :: (Ord a, Perm a) => [a -> a] -> a -> [a]
+orbit :: Perm a => [a -> a] -> a -> [a]
 orbit fs x = normalize [ f x | f <- fs ]
 
 -- | @symmetryClasses fs xs@ is the list of equivalence classes under
 -- the action of the /group/ of functions @fs@.
-symmetryClasses :: (Ord a, Perm a) => [a -> a] -> [a] -> [[a]]
+symmetryClasses :: Perm a => [a -> a] -> [a] -> [[a]]
 symmetryClasses _  [] = []
 symmetryClasses fs xs@(x:xt) = insert orb $ symmetryClasses fs ys
     where
@@ -112,11 +112,11 @@ symmetryClasses fs xs@(x:xt) = insert orb $ symmetryClasses fs ys
       ys  = [ y | y <- xt, y `notElem` orb ]
 
 -- | Symmetry classes with respect to D8.
-d8Classes :: (Ord a, Perm a) => [a] -> [[a]]
+d8Classes :: Perm a => [a] -> [[a]]
 d8Classes = symmetryClasses d8
 
 -- | Symmetry classes with respect to Klein4
-klein4Classes :: (Ord a, Perm a) => [a] -> [[a]]
+klein4Classes :: Perm a => [a] -> [[a]]
 klein4Classes = symmetryClasses klein4
 
 

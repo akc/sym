@@ -1,5 +1,4 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -- |
 -- Module      : Math.Sym
@@ -22,9 +21,11 @@ module Math.Sym
 
     -- * The permutation typeclass
     , Perm (..)
+    , CharPerm (..)
+    , IntPerm (..)
 
     -- * IntMaps as permutations
-    , Perm2
+    , Perm2 (..)
 
     -- * Convenience functions
     , empty
@@ -90,6 +91,7 @@ module Math.Sym
 import Control.Monad (liftM)
 import Data.Ord (comparing)
 import Data.Char (ord)
+import Data.String (IsString(..))
 import Data.Monoid (Monoid(..),(<>))
 import Data.Bits (Bits, bitSize, testBit, popCount, shiftL)
 import Data.List (sort, sortBy, group)
@@ -150,7 +152,7 @@ sym = perms
 -- | The class of permutations. Minimal complete definition: 'st',
 -- 'act' and 'idperm'. The default implementation of 'size' can be
 -- somewhat slow, so you may want to implement it as well.
-class Perm a where
+class Ord a => Perm a where
 
     -- | The standardization map. If there is an underlying linear
     -- order on @a@ then @st@ is determined by the unique order
@@ -252,19 +254,53 @@ stString = fromList . map f
           | 'A' <= c && c <= 'Z' = ord c - ord 'A' + 9
           | otherwise            = ord c - ord 'a' + 35
 
-instance Perm String where
-    st         = stString
-    act        = actL
-    inverse v  = act' v (idperm (size v))
-    size       = length
-    idperm n   = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
+idpermString :: Int -> String
+idpermString n = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
 
-instance Perm [Int] where
-    st         = fromList . map (+(-1))
-    act        = actL
-    inverse v  = act' v (idperm (size v))
-    size       = length
-    idperm n   = [1..n]
+-- | A String viewed as a permutation of its characters. The alphabet
+-- is ordered as
+-- 
+-- > ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
+-- 
+newtype CharPerm = CharPerm { chars :: String } deriving Eq
+
+instance Show CharPerm where
+    show w = "CharPerm " ++ show (chars w)
+
+instance Ord CharPerm where
+    compare u v = compare (st u) (st v)
+
+instance IsString CharPerm where
+    fromString = CharPerm
+
+instance Perm CharPerm where
+    st         = stString . chars
+    act v      = CharPerm . actL v . chars
+    inverse v  = CharPerm $ act' (chars v) (idpermString (size v))
+    size       = length . chars
+    idperm     = CharPerm . idpermString
+
+-- For ghci convenience we also define a String instance of Perm
+instance Perm String where
+    st         = st . CharPerm
+    act v      = chars . act v . CharPerm
+    idperm     = chars . idperm
+
+-- | A list of integers viewed as a permutation.
+newtype IntPerm = IntPerm { ints :: [Int] } deriving Eq
+
+instance Show IntPerm where
+    show w = "IntPerm " ++ show (ints w)
+
+instance Ord IntPerm where
+    compare u v = compare (st u) (st v)
+
+instance Perm IntPerm where
+    st         = fromList . map (+(-1)) . ints
+    act v      = IntPerm . actL v . ints
+    inverse v  = IntPerm $ act' (ints v) [1 .. size v]
+    size       = length . ints
+    idperm n   = IntPerm [1..n]
 
 
 -- IntMaps as permutations
@@ -272,16 +308,23 @@ instance Perm [Int] where
 
 -- | Type alias for @IntMap Int@. This can be thought of as a
 -- permutations in two line notation.
-type Perm2 = IntMap Int
+newtype Perm2 = Perm2 { intmap :: IntMap Int } deriving Eq
+
+instance Show Perm2 where
+    show w = "Perm2 (" ++ show (intmap w) ++ ")"
+
+instance Ord Perm2 where
+    compare u v = compare (st u) (st v)
 
 instance Perm Perm2 where
-    st         = st . M.elems
-    size       = M.size
-    idperm n   = M.fromDistinctAscList [ (i,i) | i <- [1..n] ]
+    st         = st . IntPerm . M.elems . intmap
+    size       = M.size . intmap
+    idperm n   = Perm2 $ M.fromDistinctAscList [ (i,i) | i <- [1..n] ]
 
-    u `act` v  = foldr (\i -> M.insert (1 + (SV.!) u' i) (v!(i+1))) M.empty [0..n-1]
+    u `act` v  = Perm2 $ foldr (\i -> M.insert (1 + (SV.!) u' i) (v'!(i+1))) M.empty [0..n-1]
         where
           u' = toVector u
+          v' = intmap v
           n  = SV.length u'
 
 
@@ -330,7 +373,7 @@ generalize2 f u v = unst $ f (st u) (st v)
 
 -- | Sort a list of permutations with respect to the standardization
 -- and remove duplicates
-normalize :: (Ord a, Perm a) => [a] -> [a]
+normalize :: Perm a => [a] -> [a]
 normalize = map (unst . head) . group . sort . map st
 
 -- | Cast a permutation of one type to another
@@ -411,14 +454,18 @@ bubbleSort = lift I.bubbleSort
 -- Permutation patterns
 -- --------------------
 
--- | Minimal complete definiton: 'copiesOf'.
-class Pattern a where
+-- | All methods of the Pattern typeclass have default
+-- implementations. This is because any permutation can also be seen
+-- as a pattern. If you want to override the default implementation
+-- you should at least define 'copiesOf'.
+class Perm a => Pattern a where
     -- | @copiesOf p w@ is the list of indices of copies of the pattern
     -- @p@ in the permutation @w@. E.g.,
     -- 
     -- > copiesOf "21" "2431" == [fromList [1,2],fromList [0,3],fromList [1,3],fromList [2,3]]
     -- 
     copiesOf :: Perm b => a -> b -> [Set]
+    copiesOf p w = I.copies subsets (toVector p) (toVector w)
 
     -- | @w `contains` p@ is a predicate determining if @w@ contains the pattern @p@.
     contains :: Perm b => b -> a -> Bool
@@ -440,9 +487,14 @@ class Pattern a where
     avoiders :: Perm b => [a] -> [b] -> [b]
     avoiders ps = filter (`avoidsAll` ps)
 
-instance Perm a => Pattern a where
-    copiesOf p w = I.copies subsets (toVector p) (toVector w)
-    avoiders ps  = I.avoiders subsets toVector (map toVector ps)
+instance Pattern StPerm where
+    avoiders ps = I.avoiders subsets toVector (map toVector ps)
+
+instance Pattern String
+instance Pattern CharPerm
+instance Pattern IntPerm
+instance Pattern Perm2
+
 
 -- | @stat p@ is the pattern @p@ when regarded as a statistic/function
 -- counting copies of itself:
@@ -473,12 +525,12 @@ del :: Perm a => Int -> a -> a
 del i = lift $ I.del i
 
 -- | The list of all single point deletions
-shadow :: (Ord a, Perm a) => [a] -> [a]
+shadow :: Perm a => [a] -> [a]
 shadow ws = normalize [ del i w | w <- ws, i <- [0 .. size w - 1] ]
 
 -- | The list of permutations that are contained in at least one of
 -- the given permutaions
-downset :: (Ord a, Perm a) => [a] -> [a]
+downset :: Perm a => [a] -> [a]
 downset = normalize . concat . downset'
     where
       downset' [] = []
@@ -494,18 +546,18 @@ ext i j = lift $ \w ->
           in SV.concat [SV.map f u, SV.singleton j, SV.map f v]
 
 -- | The list of all single point extensions
-coshadow :: (Ord a, Perm a) => [a] -> [a]
+coshadow :: Perm a => [a] -> [a]
 coshadow ws = normalize [ ext i j w | w <- ws, let n = size w, i <- [0..n], j <- [0..n] ]
 
 -- | The set of minimal elements with respect to containment.
-minima :: (Ord a, Perm a) => [a] -> [a]
+minima :: Pattern a => [a] -> [a]
 minima [] = []
 minima ws = v : minima (avoiders [v] vs)
     where
       (v:vs) = normalize ws
 
 -- | The set of maximal elements with respect to containment.
-maxima :: (Ord a, Perm a) => [a] -> [a]
+maxima :: Pattern a => [a] -> [a]
 maxima [] = []
 maxima ws = v : maxima [ u | u <- vs, v `avoids` u ]
     where
@@ -517,7 +569,7 @@ maxima ws = v : maxima [ u | u <- vs, v `avoids` u ]
 -- of permutation statistics as sums of permutation patterns, The
 -- Electronic Journal of Combinatorics 18(2) (2011),
 -- <http://www.combinatorics.org/ojs/index.php/eljc/article/view/v18i2p5>.
-coeff :: Perm a => (a -> Int) -> a -> Int
+coeff :: Pattern a => (a -> Int) -> a -> Int
 coeff f v = f v + sum [ (-1)^(k - j) * c * f u |
                         j <- [0 .. k-1]
                       , u <- perms j
