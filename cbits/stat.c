@@ -1,4 +1,8 @@
+/* (c) Anders Claesson 2013 */
+
+#include <stdlib.h>
 #include <string.h>
+
 
 /* The number of ascents */
 long
@@ -56,6 +60,24 @@ fp(const long *w, long len)
 }
 
 
+/* The number of strong fixed points */
+long
+sfp(const long *w, long len)
+{
+	long m = *w - 1;
+	long i, acc = 0;
+
+	for (i = 0; i < len; i++, w++) {
+		if (*w > m) {
+			m = *w;
+			if (m == i)
+				acc++;
+		}
+	}
+	return acc;
+}
+
+
 /* The number of cycles */
 long
 cyc(const long *w, long len)
@@ -77,6 +99,7 @@ cyc(const long *w, long len)
 		}
 		i = j;
 	}
+	free(called);
 	return acc;
 }
 

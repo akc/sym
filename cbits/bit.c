@@ -1,18 +1,20 @@
- #include <strings.h>
+/* (c) Anders Claesson 2013 */
+
+#include <strings.h>
 
 /* Lexicographically, the next bitmask with the same Hamming weight */
-unsigned int
-next(const unsigned int v)
+long
+next(const long v)
 {
-	unsigned int t = v | (v - 1);
+	long t = v | (v - 1);
 	return ((t + 1) | (((~t & -~t) - 1) >> (__builtin_ctz(v) + 1)));
 }
 
 /* Positions of bits set */
 void
-ones(unsigned int *u, const unsigned int a)
+ones(long *u, const long a)
 {
-	unsigned int b;
+	long b;
 
 	for (b = a; b; b &= b-1)
 		*u++ = ffs(b) - 1;

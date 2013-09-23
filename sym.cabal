@@ -1,61 +1,57 @@
-Name:                sym
-Version:             0.8
-Synopsis:            Permutations, patterns, and statistics
-Description:         
+name:                sym
+version:             0.9
+synopsis:            Permutations, patterns, and statistics
+description:
   Definitions for permutations with an emphasis on permutation
-  patterns and statistics.
-  .
-  ["Math.Sym"] Provides an efficient definition of standard
-  permutations, @StPerm@, together with a typeclass, @Perm@,  whose
-  functionality is largely inherited from @StPerm@ using a group
-  action and the standardization map.
-  .
-  ["Math.Sym.D8"] The dihedral group of order 8 acting on permutations.
-  .
-  ["Math.Sym.Stat"] Common permutation statistics, such as @des@,
-  @inv@, @exc@, @maj@, @fp@, @comp@, @lmin@, @lmax@, ...
-  .
-  ["Math.Sym.Class"] Common permutation classes.
-  .
-  ["Math.Sym.Bijection"] Bijections between sets of permutations.
+  patterns and permutation statistics.
 
-Homepage:            http://github.com/akc/sym
-
-License:             BSD3
-License-file:        LICENSE
-Author:              Anders Claesson
-Maintainer:          anders.claesson@gmail.com
-Category:            Math
-Build-type:          Simple
-
-Extra-source-files:  tests/Properties.hs
-
-Cabal-version:       >=1.6
+homepage:            https://github.com/akc/sym
+license:             BSD3
+license-file:        LICENSE
+author:              Anders Claesson
+maintainer:          anders.claesson@gmail.com
+category:            Data
+build-type:          Simple
+cabal-version:       >=1.8
 
 source-repository head
   type:                git
   location:            git://github.com/akc/sym.git
 
-Library
-  Exposed-modules:     Math.Sym
-                       Math.Sym.D8
-                       Math.Sym.Stat
-                       Math.Sym.Class
-                       Math.Sym.Bijection
-                       Math.Sym.Internal
+library
+  exposed-modules:     Data.CLongArray
+                       Data.Perm
+                       Data.Permgram
+                       Math.Perm
+                       Math.Perm.Component
+                       Math.Perm.Constructions
+                       Math.Perm.D8
+                       Math.Perm.Group
+                       Math.Perm.Bijection
+                       Math.Perm.Stat
+                       Math.Perm.Sort
+                       Math.Perm.Simple
+                       Math.Perm.Pattern
+                       Math.Perm.Class
+                       Math.Sym
 
-  Build-depends:       base >= 3 && < 5, random, vector, containers
-  
+  other-modules:       Data.Perm.Internal
+
+  build-depends:       base >=4.5, array >=0.4, hashable >=1.1, QuickCheck >=2.5
+
   ghc-prof-options:    -auto-all
-  ghc-options:         -Wall -O2
+  ghc-options:         -Wall -O
   cc-options:          -Wall
 
-  c-sources:           cbits/stat.c
-                       cbits/sortop.c
+  c-sources:           cbits/rank.c
+                       cbits/stat.c
+                       cbits/d8.c
+                       cbits/group.c
+                       cbits/bij.c
                        cbits/ordiso.c
-                       cbits/simple.c
                        cbits/bit.c
+                       cbits/simple.c
+                       cbits/sortop.c
 
   include-dirs:        include
-  includes:            stat.h, sortop.h, ordiso.h, simple.h, bit.h
-  install-includes:    stat.h, sortop.h, ordiso.h, simple.h, bit.h
+  includes:            rank.h, stat.h, d8.h, group.h, bij.h, ordiso.h, bit.h, simple.h, sortop.h

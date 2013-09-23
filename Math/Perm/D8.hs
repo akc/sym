@@ -1,18 +1,11 @@
--- |
--- Module      : Math.Sym.D8
--- Copyright   : (c) Anders Claesson 2012, 2013
--- License     : BSD-style
--- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
--- 
--- The dihedral group of order 8 acting on permutations.
--- 
--- To avoid name clashes this module is best imported @qualified@;
--- e.g.
--- 
--- > import qualified Math.Sym.D8 as D8
--- 
+{-# LANGUAGE ForeignFunctionInterface #-}
 
-module Math.Sym.D8
+-- |
+-- Copyright   : Anders Claesson 2013
+-- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
+--
+
+module Math.Perm.D8
     (
     -- * The group elements
       r0, r1, r2, r3
@@ -27,53 +20,54 @@ module Math.Sym.D8
     , klein4Classes
 
     -- * Aliases
-    , id
     , rotate
     , complement
     , reverse
     , inverse
     ) where
 
-import Prelude hiding (reverse, id)
-import Data.List (insert)
-import Math.Sym (Perm (size), fromVector, act, normalize)
-import qualified Math.Sym (inverse)
-import Math.Sym.Internal (revIdperm)
+import Data.List hiding (reverse)
+import Prelude hiding (reverse)
+import Data.Perm
+import Data.Perm.Internal
+import Foreign hiding (complement, rotate)
+import Foreign.C.Types
+import System.IO.Unsafe
 
 
 -- The group elements
 -- ------------------
 
 -- | Ration by 0 degrees, i.e. the identity map.
-r0 :: Perm a => a -> a
+r0 :: Perm -> Perm
 r0 w = w
 
 -- | Ration by 90 degrees clockwise.
-r1 :: Perm a => a -> a
+r1 :: Perm -> Perm
 r1 = s2 . s1
 
 -- | Ration by 2*90 = 180 degrees clockwise.
-r2 :: Perm a => a -> a
+r2 :: Perm -> Perm
 r2 = r1 . r1
 
 -- | Ration by 3*90 = 270 degrees clockwise.
-r3 :: Perm a => a -> a
+r3 :: Perm -> Perm
 r3 = r2 . r1
 
 -- | Reflection through a horizontal axis (also called 'complement').
-s0 :: Perm a => a -> a
-s0 = r1 . s2
+s0 :: Perm -> Perm
+s0 = complement
 
 -- | Reflection through a vertical axis (also called 'reverse').
-s1 :: Perm a => a -> a
-s1 w = (fromVector . revIdperm . size) w `act` w
+s1 :: Perm -> Perm
+s1 = reverse
 
 -- | Reflection through the main diagonal (also called 'inverse').
-s2 :: Perm a => a -> a
-s2 = Math.Sym.inverse
+s2 :: Perm -> Perm
+s2 = inverse
 
 -- | Reflection through the anti-diagonal.
-s3 :: Perm a => a -> a
+s3 :: Perm -> Perm
 s3 = s1 . r1
 
 
@@ -84,7 +78,7 @@ s3 = s1 . r1
 -- 
 -- > d8 = [r0, r1, r2, r3, s0, s1, s2, s3]
 -- 
-d8 :: Perm a => [a -> a]
+d8 :: [Perm -> Perm]
 d8 = [r0, r1, r2, r3, s0, s1, s2, s3]
 
 -- | The Klein four-group (the symmetries of a non-equilateral
@@ -92,19 +86,19 @@ d8 = [r0, r1, r2, r3, s0, s1, s2, s3]
 -- 
 -- > klein4 = [r0, r2, s0, s1]
 -- 
-klein4 :: Perm a => [a -> a]
+klein4 :: [Perm -> Perm]
 klein4 = [r0, r2, s0, s1]
 
 -- | @orbit fs x@ is the orbit of @x@ under the /group/ of function @fs@. E.g.,
 -- 
 -- > orbit klein4 "2314" == ["1423","2314","3241","4132"]
 -- 
-orbit :: Perm a => [a -> a] -> a -> [a]
+orbit :: [Perm -> Perm] -> Perm -> [Perm]
 orbit fs x = normalize [ f x | f <- fs ]
 
 -- | @symmetryClasses fs xs@ is the list of equivalence classes under
 -- the action of the /group/ of functions @fs@.
-symmetryClasses :: Perm a => [a -> a] -> [a] -> [[a]]
+symmetryClasses :: [Perm -> Perm] -> [Perm] -> [[Perm]]
 symmetryClasses _  [] = []
 symmetryClasses fs xs@(x:xt) = insert orb $ symmetryClasses fs ys
     where
@@ -112,33 +106,51 @@ symmetryClasses fs xs@(x:xt) = insert orb $ symmetryClasses fs ys
       ys  = [ y | y <- xt, y `notElem` orb ]
 
 -- | Symmetry classes with respect to D8.
-d8Classes :: Perm a => [a] -> [[a]]
+d8Classes :: [Perm] -> [[Perm]]
 d8Classes = symmetryClasses d8
 
 -- | Symmetry classes with respect to Klein4
-klein4Classes :: Perm a => [a] -> [[a]]
+klein4Classes :: [Perm] -> [[Perm]]
 klein4Classes = symmetryClasses klein4
 
 
 -- Aliases
 -- -------
 
--- | @id = r0@
-id :: Perm a => a -> a
-id = r0
+marshal :: (Ptr CLong -> Ptr CLong -> CLong -> IO ()) -> Perm -> Perm
+marshal op w =
+    unsafeDupablePerformIO . unsafeWith w $ \p -> do
+      let n = size w
+      unsafeNew n $ \q -> op q p (fromIntegral n)
+{-# INLINE marshal #-}
 
--- | @rotate = r1@
-rotate :: Perm a => a -> a
+foreign import ccall unsafe "d8.h inverse" c_inverse
+    :: Ptr CLong -> Ptr CLong -> CLong -> IO ()
+
+-- | The group theoretical inverse: if @v = inverse u@ then
+-- @v \`at\` (u \`at\` i) = i@.
+inverse :: Perm -> Perm
+inverse = marshal c_inverse
+{-# INLINE inverse #-}
+
+foreign import ccall unsafe "d8.h reverse" c_reverse
+    :: Ptr CLong -> Ptr CLong -> CLong -> IO ()
+
+-- | The reverse of the given permutation: if @v = reverse u@ then
+-- @v \`at\` i = u \`at\` (n-1-i)@.
+reverse :: Perm -> Perm
+reverse = marshal c_reverse
+{-# INLINE reverse #-}
+
+foreign import ccall unsafe "d8.h complement" c_complement
+    :: Ptr CLong -> Ptr CLong -> CLong -> IO ()
+
+-- | The complement of the given permutation: if @v = complement u@ then
+-- @v \`at\` i = n - 1 - u \`at\` i@.
+complement :: Perm -> Perm
+complement = marshal c_complement
+{-# INLINE complement #-}
+
+-- | @rotate = r1 = inverse . reverse@
+rotate :: Perm -> Perm
 rotate = r1
-
--- | @complement = s0@
-complement :: Perm a => a -> a
-complement = s0
-
--- | @reverse = s1@
-reverse :: Perm a => a -> a
-reverse = s1
-
--- | @inverse = s2@
-inverse :: Perm a => a -> a
-inverse = s2

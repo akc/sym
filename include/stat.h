@@ -1,7 +1,10 @@
+/* (c) Anders Claesson 2013 */
+
 long asc  (const long *, long);
 long des  (const long *, long);
 long exc  (const long *, long);
 long fp   (const long *, long);
+long sfp  (const long *, long);
 long cyc  (const long *, long);
 long inv  (const long *, long);
 long maj  (const long *, long);

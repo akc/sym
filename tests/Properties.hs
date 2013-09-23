@@ -1,31 +1,27 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
--- Copyright   : (c) Anders Claesson 2012, 2013
--- License     : BSD-style
+-- Copyright   : Anders Claesson 2013
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
+--
 
-import Data.Ord
+import qualified ListStat as LS
+import Data.Perm (Perm, at)
+import qualified Math.Perm as P
+import qualified Math.Perm.Stat as S
+import qualified Math.Perm.D8 as D8
+import Data.Permgram
 import Data.List
-import Data.Monoid
-import Data.Function
+import Data.Hashable
 import Control.Monad
-import Math.Sym (StPerm, IntPerm(..), CharPerm(..))
-import qualified Math.Sym as Sym
-import qualified Math.Sym.D8 as D8
-import qualified Math.Sym.Stat as S
-import qualified Math.Sym.Class as C
-import qualified Math.Sym.Bijection as B
-import qualified Math.Sym.Internal as I
-import qualified Data.Vector.Storable as SV
 import Test.QuickCheck
 
 check :: Testable prop => prop -> IO ()
 check = quickCheck
 
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Generators
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 rank :: Int -> Gen Integer
 rank n = choose (0, product [1..fromIntegral n] - 1)
@@ -36,227 +32,114 @@ lenRank = sized $ \m -> do
             r <- rank n
             return (n, r)
 
-lenRank2 :: Gen (Int, Integer, Integer)
-lenRank2 = do
-  (n, r1) <- lenRank
-  r2 <- rank n
-  return (n, r1, r2)
+instance Arbitrary Perm where
+    arbitrary = uncurry P.unrank `liftM` lenRank
 
-lenRank3 :: Gen (Int, Integer, Integer, Integer)
-lenRank3 = do
-  (n, r1, r2) <- lenRank2
-  r3 <- rank n
-  return (n, r1, r2, r3)
+instance Arbitrary a => Arbitrary (Permgram a) where
+    arbitrary = do
+      (n, r) <- lenRank
+      xs <- vector n
+      return $ permgram (P.unrank n r) xs
 
--- The sub-permutation determined by a set of indices.
-subperm :: Sym.Set -> StPerm -> StPerm
-subperm m w = Sym.fromVector . I.st $ SV.map ((SV.!) (Sym.toVector w)) m
+newtype PFun = PFun (Int -> Permgram Int)
 
-subperms :: Int -> StPerm -> [StPerm]
-subperms k w = [ subperm m w | m <- Sym.subsets (Sym.size w) k ]
+instance Show PFun where
+    show (PFun f) = "[" ++ images  ++ ", ..]"
+        where
+          images = intercalate ", " $ map (show . f) [0..2]
 
-instance Arbitrary StPerm where
-    arbitrary = uncurry Sym.unrankPerm `liftM` lenRank
-    shrink w = nub $ [0 .. Sym.size w - 1] >>= \k -> subperms k w
+instance Arbitrary PFun where
+    arbitrary = sized $ \m -> do
+      salt <- arbitrary
+      ws <- listOf1 arbitrary
+      return . PFun $ \x -> cycle ws !! (hashWithSalt salt x `mod` (m+1))
 
-instance Arbitrary CharPerm where
-    arbitrary = Sym.cast `liftM` (arbitrary :: Gen StPerm)
+--------------------------------------------------------------------------------
+-- Properties for Data.Perm
+--------------------------------------------------------------------------------
 
-instance Arbitrary IntPerm where
-    arbitrary = Sym.cast `liftM` (arbitrary :: Gen StPerm)
+prop_length xs = P.size (P.fromList xs) == length (xs :: [Int])
 
-perm2 :: Gen (StPerm, IntPerm)
-perm2 = do
-  (n,r1,r2) <- lenRank2
-  let u = Sym.unrankPerm n r1
-  let v = Sym.unrankPerm n r2
-  return (u, v)
+prop_unrankRankId =
+    forAll (resize 18 arbitrary) $ \w ->
+        P.unrank (P.size w) (P.rank w) == w
 
-perm3 :: Gen (StPerm, StPerm, IntPerm)
-perm3 = do
-  (n,r1,r2,r3) <- lenRank3
-  let u = Sym.unrankPerm n r1
-  let v = Sym.unrankPerm n r2
-  let w = Sym.unrankPerm n r3
-  return (u, v, w)
+prop_rankUnrankId =
+    forAll (resize 18 lenRank) $ \(n,r) ->
+        P.rank (P.unrank n r) == r
 
-stPermsOfEqualLength :: Gen [StPerm]
-stPermsOfEqualLength = sized $ \m -> do
-  n  <- choose (0,m)
-  k  <- choose (0,m^2)
-  rs <- replicateM k $ rank n
-  return $ nub $ map (Sym.unrankPerm n) rs
+st :: Ord a => [a] -> [Int]
+st = sti . sti where sti w = map snd . sort $ zip w [0::Int ..]
 
-newtype Symmetry = Symmetry (StPerm -> StPerm, String)
+prop_mkPermToListSt xs = P.toList (P.mkPerm xs) == st (xs :: [Int])
 
-d8Symmetries :: [Symmetry]
-d8Symmetries = [ Symmetry (D8.r0, "r0")
-               , Symmetry (D8.r1, "r1")
-               , Symmetry (D8.r2, "r2")
-               , Symmetry (D8.r3, "r3")
-               , Symmetry (D8.s0, "s0")
-               , Symmetry (D8.s1, "s1")
-               , Symmetry (D8.s2, "s2")
-               , Symmetry (D8.s3, "s3")
-               ]
+prop_unsafeAt w = map (w `P.unsafeAt`) [0 .. P.size w - 1] == P.toList w
 
-instance Show Symmetry where
-    show (Symmetry (_,s)) = s
+prop_perms = and [ sort (permutations [0..n-1]) == sort (map P.toList (P.perms n))
+                   | n <- [0..7]
+                 ]
 
-instance Arbitrary Symmetry where
-    arbitrary = liftM (d8Symmetries !!) $ choose (0, length d8Symmetries - 1)
+prop_coeff_des =
+    forAll (resize 7 arbitrary) $ \w ->
+        let n = P.size w
+        in n > 0 ==> fromEnum (w `at` 0 > w `at` (n-1))*(-1)^n == P.coeff S.des w
 
+prop_coeff_lmax =
+    forAll (resize 7 arbitrary) $ \w ->
+        let n = P.size w
+        in n > 0 ==> fromEnum (w `at` (n-1) == 0) * (-1)^(n-1) == P.coeff S.lmax w
 
----------------------------------------------------------------------------------
--- Properties for Math.Sym
----------------------------------------------------------------------------------
+-- prop_monoid_mempty1 w = mempty <> w == (w :: StPerm)
+-- prop_monoid_mempty2 w = w <> mempty == (w :: StPerm)
+-- prop_monoid_associative u v w = u <> (v <> w) == (u <> v) <> (w :: StPerm)
 
-prop_monoid_mempty1 w = mempty <> w == (w :: StPerm)
-prop_monoid_mempty2 w = w <> mempty == (w :: StPerm)
-prop_monoid_associative u v w = u <> (v <> w) == (u <> v) <> (w :: StPerm)
+-- newtype S = S {unS :: StPerm} deriving (Eq, Show)
 
-newtype S = S {unS :: StPerm} deriving (Eq, Show)
+-- instance Arbitrary S where
+--     arbitrary = liftM S arbitrary
 
-instance Arbitrary S where
-    arbitrary = liftM S arbitrary
+-- instance Monoid S where
+--     mempty = S $ Sym.fromVector SV.empty
+--     mappend u v = S $ (Sym.\-\) (unS u) (unS v)
 
-instance Monoid S where
-    mempty = S $ Sym.fromVector SV.empty
-    mappend u v = S $ (Sym.\-\) (unS u) (unS v)
+-- prop_monoid_mempty1_S w = mempty <> w == (w :: S)
+-- prop_monoid_mempty2_S w = w <> mempty == (w :: S)
+-- prop_monoid_associative_S u v w = u <> (v <> w) == (u <> v) <> (w :: S)
 
-prop_monoid_mempty1_S w = mempty <> w == (w :: S)
-prop_monoid_mempty2_S w = w <> mempty == (w :: S)
-prop_monoid_associative_S u v w = u <> (v <> w) == (u <> v) <> (w :: S)
+testsDataPerm =
+    [ ("Data.Perm/length",                check prop_length)
+    , ("Data.Perm/unrankRankId",          check prop_unrankRankId)
+    , ("Data.Perm/rankUnrankId",          check prop_rankUnrankId)
+    , ("Data.Perm/mkPermToListSt",        check prop_mkPermToListSt)
+    , ("Data.Perm/unsafeAt",              check prop_unsafeAt)
+    , ("Data.Perm/perms",                 check prop_perms)
+    , ("Data.Perm/coeff/des",             check prop_coeff_des)
+    , ("Data.Perm/coeff/lmax",            check prop_coeff_lmax)
+    ]
 
-neutralize :: Sym.Perm a => a -> a
-neutralize = Sym.idperm . Sym.size
+--------------------------------------------------------------------------------
+-- Properties for Data.Permgram
+--------------------------------------------------------------------------------
 
-forAllPermEq f g w = f w == g (w :: IntPerm)
+prop_monadLeftId (PFun f) x = (return x >>= f) == f x
 
-prop_unrankPerm_distinct =
-    forAll lenRank $ \(n, r) ->
-        let w = Sym.toList (Sym.unrankPerm n r) in nub w == w
+prop_monadRightId w = (w >>= return) == (w :: Permgram Int)
 
-prop_unrankPerm_injective =
-    forAll lenRank2 $ \(n, r1, r2) ->
-        (Sym.unrankPerm n r1 :: StPerm) /= Sym.unrankPerm n r2 || r1 == r2
+prop_monadAssociativity =
+    forAll (resize 7 arbitrary) $ \(PFun f) ->
+    forAll (resize 7 arbitrary) $ \(PFun g) ->
+    forAll (resize 9 arbitrary) $ \w ->
+        ((w >>= f) >>= g) == (w >>= (\x -> f x >>= g))
 
-prop_sym = and [ sort (Sym.sym n) == sort (sym' n) | n<-[0..6] ]
-    where
-      sym' n = map Sym.fromList $ Data.List.permutations [0..fromIntegral n - 1]
+testsDataPermgram =
+    [ ("Data.Permgram/Monad/LeftId",         check prop_monadLeftId)
+    , ("Data.Permgram/Monad/RightId",        check prop_monadRightId)
+    , ("Data.Permgram/Monad/Associativity",  check prop_monadAssociativity)
+    ]
 
-prop_perm =
-    and [ map ints (sort (Sym.perms n)) == sort (permutations [1..n]) | n<-[0..6::Int] ]
-
-prop_st =
-    forAll perm2 $ \(u,v) -> Sym.st (u `Sym.act` v) == u `Sym.act` Sym.st v
-
-prop_act_def =
-    forAll perm2 $ \(u,v) -> u `Sym.act` v == IntPerm (map (ints v !!) (Sym.toList u))
-
-prop_act_id =
-    forAll perm2 $ \(u,v) -> neutralize u `Sym.act` v == v
-
-prop_act_associative =
-    forAll perm3 $ \(u,v,w) -> (u `Sym.act` v) `Sym.act` w == u `Sym.act` (v `Sym.act` w)
-
-prop_size = Sym.size `forAllPermEq` (Sym.size . Sym.st)
-
-prop_neutralize = neutralize `forAllPermEq` (\u -> Sym.inverse (Sym.st u) `Sym.act` u)
-
-prop_inverse = forAllPermEq Sym.inverse $ \v -> Sym.inverse (Sym.st v) `Sym.act` neutralize v
-
-prop_ordiso1 =
-    forAll perm2 $ \(u,v) -> u `Sym.ordiso` v == (u == Sym.st v)
-
-prop_ordiso2 =
-    forAll perm2 $ \(u,v) ->
-        u `Sym.ordiso` v == (Sym.inverse u `Sym.act` v == neutralize v)
-
-shadow :: Ord a => [a] -> [[a]]
-shadow w = nubsort . map normalize $ ptDeletions w
-    where
-      w' = sort w
-      normalize u = [ w'!!i | i <- st u ]
-      nubsort = map head . group . sort
-      ptDeletions [] = []
-      ptDeletions xs@(x:xt) = xt : map (x:) (ptDeletions xt)
-
-prop_shadow = forAll (resize 30 arbitrary) $ \w -> Sym.shadow [w] == map IntPerm (shadow (ints w))
-
-prop_downset_shadow =
-    forAll (resize 10 arbitrary) $ \w ->
-        [ v | v <- Sym.downset [w], 1 + Sym.size v == Sym.size w ] == Sym.shadow [w :: CharPerm]
-
-prop_downset_orderideal =
-    forAll (resize 9 arbitrary) $ \w -> null [ v | v <- Sym.downset [w :: CharPerm]
-                                             , w `Sym.avoids` v
-                                             ]
-
-coshadow :: Integral a => [a] -> [[Int]]
-coshadow w = nub . sort . map (map (+1) . st) $ [0..length w] >>= \i ->
-             ptExtensions (fromIntegral i + 0.5) (map fromIntegral w)
-    where
-      ptExtensions n [] = [[n]]
-      ptExtensions n xs@(x:xt) = (n:xs) : map (x:) (ptExtensions n xt)
-
-prop_coshadow = forAll (resize 12 arbitrary) $ \w -> Sym.coshadow [w] == map IntPerm (coshadow (ints w))
-
-prop_coeff =
-    forAll (resize 5 arbitrary) $ \u ->
-    forAll (resize 6 arbitrary) $ \v ->
-        Sym.coeff (Sym.stat u) (v :: CharPerm) == fromEnum (u==v)
-
-prop_minima_antichain =
-    forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ (v::StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
-
-prop_minima_smallest =
-    forAll (resize 14 arbitrary) $ \ws ->
-        let vs = Sym.minima ws in and [ not ((w::StPerm) `Sym.avoidsAll` vs) | w <- ws ]
-
-prop_maxima_antichain =
-    forAll (resize 12 arbitrary) $ \ws ->
-        let vs = Sym.maxima ws in and [ (v::StPerm) `Sym.avoidsAll` (vs \\ [v]) | v <- vs ]
-
-recordIndicesAgree f g w = SV.fromList (recordIndices w) == f w
-    where
-      w' = ints w
-      recordIndices w = [ head $ elemIndices x w' | x <- g w' ]
-
-prop_lMaxima = recordIndicesAgree Sym.lMaxima lMaxima
-prop_lMinima = recordIndicesAgree Sym.lMinima lMinima
-prop_rMaxima = recordIndicesAgree Sym.rMaxima rMaxima
-prop_rMinima = recordIndicesAgree Sym.rMinima rMinima
-
-prop_lMaxima_card = S.lmax `forAllPermEq` (SV.length . Sym.lMaxima)
-prop_lMinima_card = S.lmin `forAllPermEq` (SV.length . Sym.lMinima)
-prop_rMaxima_card = S.rmax `forAllPermEq` (SV.length . Sym.rMaxima)
-prop_rMinima_card = S.rmin `forAllPermEq` (SV.length . Sym.rMinima)
-
--- The list of indices of components in a permutation
-components w = lMaxima w `cap` rMinima (bubble w)
-
--- The list of indices of skew components in a permutation
-skewComponents w = components $ map (\x -> length w - x - 1) w
-
-prop_components = (components . st . ints) `forAllPermEq` (SV.toList . Sym.components)
-
-prop_skewComponents = (skewComponents . st . ints) `forAllPermEq` (SV.toList . Sym.skewComponents)
-
-prop_dsum u v = (Sym./+/) u v == Sym.inflate ("12" :: CharPerm) [u, v :: CharPerm]
-
-prop_ssum u v = (Sym.\-\) u v == Sym.inflate ("21" :: CharPerm) [u, v :: CharPerm]
-
-inflate :: [Int] -> [[Int]] -> [Int]
-inflate w vs = sort [ (i, map (+c) u) | (i, c, u) <- zip3 w' cs us ] >>= snd
-    where
-      (_, w',us) = unzip3 . sort $ zip3 w [0..] vs
-      cs = scanl (\i u -> i + length u) 0 us
-
-prop_inflate u0 u1 u2 u3 =
-    let us = [u0, u1, u2, u3]
-    in and [ IntPerm (inflate w (map ints us)) == Sym.inflate (IntPerm w) us | w <- permutations [1..4] ]
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm
+--------------------------------------------------------------------------------
 
 segments :: [a] -> [[a]]
 segments [] = [[]]
@@ -277,314 +160,158 @@ properIntervals xs = [ ys | ys <- yss, sort ys `elem` zss ]
 simple :: Ord a => [a] -> Bool
 simple = null . properIntervals
 
-prop_simple = forAll (resize 40 arbitrary) $ \w -> Sym.simple w == simple (ints w)
-
-prop_stackSort = Sym.stackSort `forAllPermEq` (IntPerm . stack . ints)
-
-prop_stackSort_231 =
-  (\v -> Sym.stackSort v == neutralize v) `forAllPermEq` (`Sym.avoids` ("231" :: CharPerm))
-
-prop_bubbleSort = Sym.bubbleSort `forAllPermEq` (IntPerm . bubble . ints)
-
-prop_bubbleSort_231_321 = f `forAllPermEq` g
-    where f v = Sym.bubbleSort v == neutralize v
-          g v = v `Sym.avoidsAll` ["231", "321" :: CharPerm]
-
-prop_subperm_copies p =
-    forAll (resize 21 arbitrary) $ \w ->
-        and [ subperm m (Sym.st w) == p | m <- Sym.copiesOf p (w :: CharPerm) ]
-
-prop_copies =
-    forAll (resize  6 arbitrary) $ \p ->
-    forAll (resize 12 arbitrary) $ \w ->
-        sort (Sym.copiesOf p w) == sort (map I.fromList $ copies (Sym.toList p) (ints w))
-
-prop_copies_self v = Sym.copiesOf v (v :: CharPerm) == [SV.fromList [0 .. Sym.size v - 1]]
-
-prop_copies_d8 (Symmetry (f,_)) =
-    forAll (resize  6 arbitrary) $ \p ->
+prop_simple =
     forAll (resize 20 arbitrary) $ \w ->
-        let p' = f p
-            w' = (Sym.unst . f . Sym.st) (w :: CharPerm)
-        in Sym.stat p w == Sym.stat p' (w' :: CharPerm)
+        P.simple w == simple (P.toList w)
 
-prop_avoiders_avoid =
+testsMathPerm =
+    [ ("Math.Perm/simple",    check prop_simple)
+    ]
+
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.Pattern
+--------------------------------------------------------------------------------
+
+prop_copiesSelf v = P.copiesOf v v == [P.fromList [0 .. P.size v - 1]]
+
+prop_avoidersAvoid =
     forAll (resize 20 arbitrary) $ \ws ->
     forAll (resize  6 arbitrary) $ \ps ->
-        all (`Sym.avoidsAll` ps) $ Sym.avoiders (ps :: [StPerm]) (ws :: [StPerm])
+        all (`P.avoidsAll` ps) $ P.avoiders ps ws
 
-prop_avoiders_idempotent =
+prop_avoidersIdempotent =
     forAll (resize 18 arbitrary) $ \vs ->
     forAll (resize  5 arbitrary) $ \ps ->
-        let ws = Sym.avoiders (ps :: [StPerm]) (vs :: [StPerm])
-        in  ws == Sym.avoiders ps ws
+        let ws = P.avoiders ps vs in ws == P.avoiders ps ws
 
-prop_avoiders_d8 (Symmetry (f,_)) =
-    forAll (choose (0, 5))      $ \n ->
-    forAll (resize 5 arbitrary) $ \p ->
-        let ws = Sym.sym n
-        in sort (map f $ Sym.avoiders [p] ws) == sort (Sym.avoiders [f p] ws)
-
-prop_avoiders_d8' (Symmetry (f,_)) =
-    forAll (choose (0, 5))      $ \n ->
-    forAll (resize 5 arbitrary) $ \ps ->
-        let ws = Sym.sym n
-        in sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws))
-
-prop_avoiders_d8'' (Symmetry (f,_)) =
-    forAll (resize 18 arbitrary) $ \ws ->
-    forAll (resize  5 arbitrary) $ \ps ->
-        sort (map f $ Sym.avoiders ps ws) == sort (Sym.avoiders (map f ps) (map f ws :: [StPerm]))
-
-prop_av_cardinality =
+prop_avoidersSpectrum =
     forAll (resize 3 arbitrary) $ \p ->
-        let spec = [ length $ Sym.av [p :: StPerm] n | n<-[0..6] ]
-        in case Sym.size p of
+        let spec = [ length $ P.avoiders [p] (P.perms n) | n<-[0..6] ]
+        in case P.size p of
              0 -> spec == [0,0,0,0,0,0,0]
              1 -> spec == [1,0,0,0,0,0,0]
              2 -> spec == [1,1,1,1,1,1,1]
              3 -> spec == [1,1,2,5,14,42,132]
-             _ -> True
+             _ -> False
 
-binomial n k = fromIntegral $ product [n', n'-1 .. n'-k'+1] `div` product [1..k']
-    where
-      n' = toInteger n
-      k' = toInteger k
+prop_minimaSmallest =
+    forAll (resize 14 arbitrary) $ \ws ->
+        let vs = P.minima ws
+        in and [ not (w `P.avoidsAll` vs) | w <- ws ]
 
-kSubsequences :: Int -> [a] -> [[a]]
-kSubsequences 0 _      = [[]]
-kSubsequences _ []     = []
-kSubsequences k (x:xs) = map (x:) (kSubsequences (k-1) xs) ++ kSubsequences k xs
+prop_minimaAntichain =
+    forAll (resize 14 arbitrary) $ \ws ->
+        let vs = P.minima ws in and [ v `P.avoidsAll` (vs \\ [v]) | v <- vs ]
 
-copies :: [Int] -> [Int] -> [[Int]]
-copies p w = [ is | js <- u, let (is, q) = unzip (f js (zip [0..] w)), st q == p ]
-    where
-      k = length p
-      n = length w
-      u = kSubsequences k [0..n-1]
-      f s@(j:t) ((i,x):v) = if i == j then (i,x) : f t v else f s v
-      f _       _         = []
+prop_maximaAntichain =
+    forAll (resize 12 arbitrary) $ \ws ->
+        let vs = P.maxima ws
+        in and [ v `P.avoidsAll` (vs \\ [v]) | v <- vs ]
 
-prop_subsets1 =
-    forAll (choose (0,13)) $ \n ->
-    forAll (choose (0,13)) $ \k ->
-        sort (kSubsequences k [0..n-1]) == sort (map SV.toList $ Sym.subsets n k)
-
-prop_subsets2 =
-    forAll (choose (0,33)) $ \n ->
-    forAll (choose (0,3))  $ \k ->
-        sort (kSubsequences k [0..n-1]) == sort (map SV.toList $ Sym.subsets n k)
-
-prop_subsets_singleton =
-    forAll (choose (0,500)) $ \n ->
-        let [v] = Sym.subsets n n in SV.toList v == [0..n-1]
-
-prop_subsets_cardinality1 =
-    forAll (choose (0,16)) $ \n ->
-    forAll (choose (0,16)) $ \k ->
-        length (Sym.subsets n k) == binomial n k
-
-prop_subsets_cardinality2 =
-    forAll (choose (0,16)) $ \n ->
-    forAll (choose (0,16)) $ \k ->
-        let cs = map SV.length (Sym.subsets n k)
-        in ((k > n) && null cs) || ([k] == nub cs)
-
-testsPerm =
-    [ ("monoid/mempty/1",                check prop_monoid_mempty1)
-    , ("monoid/mempty/2",                check prop_monoid_mempty2)
-    , ("monoid/mempty/associative",      check prop_monoid_associative)
-    , ("monoid/mempty/1/skew",           check prop_monoid_mempty1_S)
-    , ("monoid/mempty/2/skew",           check prop_monoid_mempty2_S)
-    , ("monoid/mempty/associative/skew", check prop_monoid_associative_S)
-    , ("unrankPerm/distinct",            check prop_unrankPerm_distinct)
-    , ("unrankPerm/injective",           check prop_unrankPerm_injective)
-    , ("sym",                            check prop_sym)
-    , ("perm",                           check prop_perm)
-    , ("st",                             check prop_st)
-    , ("act/def",                        check prop_act_def)
-    , ("act/id",                         check prop_act_id)
-    , ("act/associative",                check prop_act_associative)
-    , ("size",                           check prop_size)
-    , ("neutralize",                     check prop_neutralize)
-    , ("inverse",                        check prop_inverse)
-    , ("ordiso/1",                       check prop_ordiso1)
-    , ("ordiso/2",                       check prop_ordiso2)
-    , ("shadow",                         check prop_shadow)
-    , ("coshadow",                       check prop_coshadow)
-    , ("coeff",                          check prop_coeff)
-    , ("downset/shadow",                 check prop_downset_shadow)
-    , ("downset/orderideal",             check prop_downset_orderideal)
-    , ("minima/smallest",                check prop_minima_smallest)
-    , ("minima/antichain",               check prop_minima_antichain)
-    , ("maxima/antichain",               check prop_maxima_antichain)
-    , ("simple",                         check prop_simple)
-    , ("lMaxima",                        check prop_lMaxima)
-    , ("lMinima",                        check prop_lMinima)
-    , ("rMaxima",                        check prop_rMaxima)
-    , ("rMinima",                        check prop_rMinima)
-    , ("lMaxima/card",                   check prop_lMaxima_card)
-    , ("lMinima/card",                   check prop_lMinima_card)
-    , ("rMaxima/card",                   check prop_rMaxima_card)
-    , ("rMinima/card",                   check prop_rMinima_card)
-    , ("components",                     check prop_components)
-    , ("dsum",                           check prop_dsum)
-    , ("ssum",                           check prop_ssum)
-    , ("inflate",                        check prop_inflate)
-    , ("skewComponents",                 check prop_skewComponents)
-    , ("stackSort",                      check prop_stackSort)
-    , ("stackSort/231",                  check prop_stackSort_231)
-    , ("bubbleSort",                     check prop_bubbleSort)
-    , ("bubbleSort/231&321",             check prop_bubbleSort_231_321)
-    , ("subperm/copies",                 check prop_subperm_copies)
-    , ("copies",                         check prop_copies)
-    , ("copies/self",                    check prop_copies_self)
-    , ("copies/D8",                      check prop_copies_d8)
-    , ("avoiders/avoid",                 check prop_avoiders_avoid)
-    , ("avoiders/idempotent",            check prop_avoiders_idempotent)
-    , ("avoiders/D8/0",                  check prop_avoiders_d8)
-    , ("avoiders/D8/1",                  check prop_avoiders_d8')
-    , ("avoiders/D8/2",                  check prop_avoiders_d8'')
-    , ("av/cardinality",                 check prop_av_cardinality)
-    , ("subsets/1",                      check prop_subsets1)
-    , ("subsets/2",                      check prop_subsets2)
-    , ("subsets/singleton",              check prop_subsets_singleton)
-    , ("subsets/cardinality/1",          check prop_subsets_cardinality1)
-    , ("subsets/cardinality/2",          check prop_subsets_cardinality2)
+testsMathPermPattern =
+    [ ("Math.Perm.Pattern/copies/self",           check prop_copiesSelf)
+    , ("Math.Perm.Pattern/avoiders/avoid",        check prop_avoidersAvoid)
+    , ("Math.Perm.Pattern/avoiders/idempotent",   check prop_avoidersIdempotent)
+    , ("Math.Perm.Pattern/avoiders/spectrum",     check prop_avoidersSpectrum)
+    , ("Math.Perm.Pattern/minima/smallest",       check prop_minimaSmallest)
+    , ("Math.Perm.Pattern/minima/antichain",      check prop_minimaAntichain)
+    , ("Math.Perm.Pattern/maxima/antichain",      check prop_maximaAntichain)
     ]
 
----------------------------------------------------------------------------------
--- Properties for Math.Sym.D8
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.D8
+--------------------------------------------------------------------------------
 
-fn (Symmetry (f,_)) = f
+prop_reverseDef u =
+    let v = D8.reverse u
+        n = P.size u
+    in n > 0 ==> forAll (choose (0,n-1)) $ \i -> v `at` i == u `at` (n-1-i)
 
-prop_D8_orbit fs w = all (`elem` orbD8) $ D8.orbit (map fn fs) w
-    where
-      orbD8 = D8.orbit D8.d8 (w :: StPerm)
+prop_reverseInvolutive w = D8.reverse (D8.reverse w) == w
 
-symmetriesAgrees f g = (f . Sym.toVector) `forAllPermEq` (Sym.toVector . g)
+prop_complementDef u =
+    let v = D8.complement u
+        n = P.size u
+    in n > 0 ==> forAll (choose (0,n-1)) $ \i -> v `at` i == n - 1 - u `at` i
 
-prop_D8_reverse    = symmetriesAgrees I.reverse    D8.reverse
-prop_D8_complement = symmetriesAgrees I.complement D8.complement
-prop_D8_inverse    = symmetriesAgrees I.inverse    D8.inverse
-prop_D8_rotate     = symmetriesAgrees I.rotate     D8.rotate
+prop_complementInvolutive w = D8.complement (D8.complement w) == w
 
--- Auxilary function that partitions a list xs with respect to the
--- equivalence induced by a function f; i.e. x ~ y iff f x == f y.
--- The time complexity is the same as for sorting, O(n log n).
-eqClasses :: Ord a => (b -> a) -> [b] -> [[b]]
-eqClasses f xs = (map . map) snd . group' $ sort' [ (f x, x) | x <- xs ]
-    where
-      group' = groupBy ((==) `on` fst)
-      sort' = sortBy $ comparing fst
+prop_inverseDef u =
+    let v = D8.inverse u
+        n = P.size u
+    in n > 0 ==> forAll (choose (0,n-1)) $ \i -> v `at` (u `at` i) == i
 
-symmetryClasses :: (Ord a, Sym.Perm a) => [a -> a] -> [a] -> [[a]]
-symmetryClasses fs xs = sort . map sort $ eqClasses (D8.orbit fs) xs
+prop_inverseInvolutive w = D8.inverse (D8.inverse w) == w
 
-symmetryClassesByGroup fs =
-    forAll (resize 10 stPermsOfEqualLength) $ \ws ->
-        symmetryClasses fs ws == D8.symmetryClasses fs ws
-
-prop_symmetryClasses_d8     = symmetryClassesByGroup D8.d8
-prop_symmetryClasses_klein4 = symmetryClassesByGroup D8.klein4
-prop_symmetryClasses_ei     = symmetryClassesByGroup [D8.id, D8.inverse]
-prop_symmetryClasses_er     = symmetryClassesByGroup [D8.id, D8.reverse]
-prop_symmetryClasses_ec     = symmetryClassesByGroup [D8.id, D8.complement]
-
-testsD8 =
-    [ ("D8/orbit",                   check prop_D8_orbit)
-    , ("D8/reverse",                 check prop_D8_reverse)
-    , ("D8/complement",              check prop_D8_complement)
-    , ("D8/inverse",                 check prop_D8_inverse)
-    , ("D8/rotate",                  check prop_D8_rotate)
-    , ("D8/symmetryClasses/ei",      check prop_symmetryClasses_ei)
-    , ("D8/symmetryClasses/er",      check prop_symmetryClasses_er)
-    , ("D8/symmetryClasses/ec",      check prop_symmetryClasses_ec)
-    , ("D8/symmetryClasses/d8",      check prop_symmetryClasses_d8)
-    , ("D8/symmetryClasses/klein4",  check prop_symmetryClasses_klein4)
+testsMathPermD8 =
+    [ ("Math.Perm.D8/reverse/def",           check prop_reverseDef)
+    , ("Math.Perm.D8/reverse/involutive",    check prop_reverseInvolutive)
+    , ("Math.Perm.D8/complement/def",        check prop_complementDef)
+    , ("Math.Perm.D8/complement/involutive", check prop_complementInvolutive)
+    , ("Math.Perm.D8/inverse/def",           check prop_inverseDef)
+    , ("Math.Perm.D8/inverse/involutive",    check prop_inverseInvolutive)
     ]
 
----------------------------------------------------------------------------------
--- Properties for Math.Sym.Stat
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.Group
+--------------------------------------------------------------------------------
 
--- the group theoretical inverse of w
-inverse :: (Ord a) => [a] -> [Int]
-inverse w = map snd . sort $ zip w [0..]
+prop_act_id v =
+    P.idperm (P.size v) `P.act` v == v
 
--- the standardization of w
-st :: (Ord a) => [a] -> [Int]
-st = inverse . inverse
+prop_act_associative u v w =
+    (u `P.compose` v) `P.act` w == u `P.act` (v `P.act` w)
 
-ascents, descents :: (Ord a) => [a] -> [(a, a)]
-ascents  w = filter (uncurry (<)) $ zip w (tail w)
-descents w = filter (uncurry (>)) $ zip w (tail w)
+prop_compose_id_left v =
+    P.idperm (P.size v) `P.compose` v == v
 
-peaks          w = [ v | v@(x,y,z) <- zip3 w (tail w) (tail (tail w)), x < y, y > z ]
-valleys        w = [ v | v@(x,y,z) <- zip3 w (tail w) (tail (tail w)), x > y, y < z ]
-doubleAscents  w = [ v | v@(x,y,z) <- zip3 w (tail w) (tail (tail w)), x < y, y < z ]
-doubleDescents w = [ v | v@(x,y,z) <- zip3 w (tail w) (tail (tail w)), x > y, y > z ]
+prop_compose_id_right v =
+    v `P.compose` P.idperm (P.size v) == v
 
-inversions :: (Ord a) => [a] -> [(a, a)]
-inversions w = init (tails w) >>= \(x:xs) -> [ (x,y) | y<-xs, x > y ]
+prop_compose_associative u v w =
+    (u `P.compose` v) `P.compose` w == u `P.compose` (v `P.compose` w)
 
-records :: (a -> a -> Bool) -> [a] -> [a]
-records f []     = []
-records f (x:xs) = records' f [x] xs where
-    records' f recs       []     = recs
-    records' f recs@(r:_) (x:xs) = records' f (if f r x then x:recs else recs) xs
+testsMathPermGroup =
+    [ ("Math.Perm.Group/act/id",               check prop_act_id)
+    , ("Math.Perm.Group/act/associative",      check prop_act_associative)
+    , ("Math.Perm.Group/compose/id/left",      check prop_compose_id_left)
+    , ("Math.Perm.Group/compose/id/right",     check prop_compose_id_right)
+    , ("Math.Perm.Group/compose/associative",  check prop_compose_associative)
+    ]
 
-lMinima, lMaxima, rMinima, rMaxima :: (Ord a) => [a] -> [a]
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.Bijection
+--------------------------------------------------------------------------------
 
-lMinima = reverse . records (>)
-lMaxima = reverse . records (<)
-rMinima = records (>) . reverse
-rMaxima = records (<) . reverse
+p123 = P.fromList [0,1,2]
+p132 = P.fromList [0,2,1]
 
-excedances  xs = map fst . filter (\(i,a)->i <  fromIntegral a) $ zip [0..] xs
-fixedpoints xs = map fst . filter (\(i,a)->i == fromIntegral a) $ zip [0..] xs
+prop_simionSchmidt_avoid =
+    forAll (resize 12 arbitrary) $ \w ->
+        w `P.avoids` p123 ==> P.simionSchmidt w `P.avoids` p132
 
-orbit :: Eq a => (a -> a) -> a -> [a]
-orbit f x = y:takeWhile (/=y) ys where (y:ys) = iterate f x
+prop_simionSchmidt_avoid' =
+    forAll (resize 12 arbitrary) $ \w ->
+        w `P.avoids` p132 ==> P.simionSchmidt' w `P.avoids` p123
 
-orbits :: Eq a => (a -> a) -> [a] -> [[a]]
-orbits f [] = []
-orbits f (x:xs) = ys:orbits f (xs\\ys) where ys = orbit f x
+prop_simionSchmidt_id =
+    forAll (resize 12 arbitrary) $ \w ->
+        w `P.avoids` p123 ==> P.simionSchmidt' (P.simionSchmidt w) == w
 
-exc, fp :: [Int] -> Int
-exc = length . excedances . st
-fp  = length . fixedpoints . st
+prop_simionSchmidt_id' =
+    forAll (resize 12 arbitrary) $ \w ->
+        w `P.avoids` p132 ==> P.simionSchmidt (P.simionSchmidt' w) == w
 
-cyc :: [Int] -> Int
-cyc w = let v = st w in length $ orbits (v!!) v
+testsMathPermBijection =
+    [ ("Math.Perm.Bijection/simionSchmidt/avoid",  check prop_simionSchmidt_avoid)
+    , ("Math.Perm.Bijection/simionSchmidt'/avoid", check prop_simionSchmidt_avoid')
+    , ("Math.Perm.Bijection/simionSchmidt/id",     check prop_simionSchmidt_id)
+    , ("Math.Perm.Bijection/simionSchmidt'/id",    check prop_simionSchmidt_id')
+    ]
 
-runs :: Ord a => (a -> a -> Bool) -> [a] -> [a] -> [[a]]
-runs _ [] [] = []
-runs _ rs [] = [rs]
-runs f [] (x:xs) = runs f [x] xs
-runs f u@(r:_) v@(x:xs) | f r x = runs f (x:u) xs
-                        | otherwise = u : runs f [x] xs
-
-decruns :: Ord a => [a] -> [[a]]
-decruns = runs (>) []
-
-incruns :: Ord a => [a] -> [[a]]
-incruns = runs (<) []
-
-ldr, rdr, lir, rir :: (Ord a) => [a] -> Int
-
-ldr [] = 0
-ldr xs = length . head $ decruns xs
-
-rdr [] = 0
-rdr xs = length . last $ decruns xs
-
-lir [] = 0
-lir xs = length . head $ incruns xs
-
-rir [] = 0
-rir xs = length . last $ incruns xs
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.Sort
+--------------------------------------------------------------------------------
 
 -- The stack-sort operator
 stack [] = []
@@ -603,166 +330,113 @@ bubble = bub []
           | x < y     = bub (y:x:xs) ys
           | otherwise = bub (x:y:xs) ys
 
--- Like Data.List.intersect, but by assuming that the lists are sorted
--- uses a faster algorithm
-cap :: Ord a => [a] -> [a] -> [a]
-cap [] ys = []
-cap xs [] = []
-cap xs@(x:xt) ys@(y:yt) = case compare x y of
-                            EQ -> x : cap xt yt
-                            LT -> cap xt ys
-                            GT -> cap xs yt
+prop_stackDef  w = stack  (P.toList w) == P.toList (P.stackSort  w)
+prop_bubbleDef w = bubble (P.toList w) == P.toList (P.bubbleSort w)
 
--- The number of components in a permutation
-comp = length . components
+prop_stackAv w =
+    let basis = [P.fromList [1,2,0]]
+    in (P.stackSort w == P.idperm (P.size w)) == w `P.avoidsAll` basis
 
--- The number of skew components in a permutation
-scomp = length . skewComponents
+prop_bubbleAv w =
+    let basis = [P.fromList [1,2,0], P.fromList [2,1,0]]
+    in (P.bubbleSort w == P.idperm (P.size w)) == w `P.avoidsAll` basis
 
--- rank a la Elizalde
-ep = fst . last . filter (\(k,ys) -> all (k<=) ys) . zip [0..] . inits . st
-
-des, asc, inv, lmin, lmax, rmin, rmax, peak, vall :: [Int] -> Int
-dasc, ddes, maj, comp, ep, dim :: [Int] -> Int
-
-dim   w = maximum $ 0 : [ i | (i,x) <- zip [0..] (st w), i /= x ]
-maj   w = sum [ i | (i,x,y) <- zip3 [1..] w (tail w), x > y ]
-comaj w = sum [ n-i | (i,x,y) <- zip3 [1..] w (tail w), x > y ] where n = length w
-asc0  w = sum [ 1 | (x,y) <- ascents  $ st w, y-x == 1 ]
-des0  w = sum [ 1 | (x,y) <- descents $ st w, x-y == 1 ]
-
-asc  = length . ascents
-des  = length . descents
-inv  = length . inversions
-lmin = length . lMinima
-lmax = length . lMaxima
-rmin = length . rMinima
-rmax = length . rMaxima
-peak = length . peaks
-vall = length . valleys
-dasc = length . doubleAscents
-ddes = length . doubleDescents
-shad = length . shadow
-
-prop_asc    = forAllPermEq  (asc   . ints)  S.asc
-prop_des    = forAllPermEq  (des   . ints)  S.des
-prop_exc    = forAllPermEq  (exc   . ints)  S.exc
-prop_fp     = forAllPermEq  (fp    . ints)  S.fp
-prop_cyc    = forAllPermEq  (cyc   . ints)  S.cyc
-prop_inv    = forAllPermEq  (inv   . ints)  S.inv
-prop_maj    = forAllPermEq  (maj   . ints)  S.maj
-prop_comaj  = forAllPermEq  (comaj . ints)  S.comaj
-prop_lmin   = forAllPermEq  (lmin  . ints)  S.lmin
-prop_lmax   = forAllPermEq  (lmax  . ints)  S.lmax
-prop_rmin   = forAllPermEq  (rmin  . ints)  S.rmin
-prop_rmax   = forAllPermEq  (rmax  . ints)  S.rmax
-prop_head w = (w /= Sym.empty) ==> head (ints w) == 1 + S.head w
-prop_last w = (w /= Sym.empty) ==> last (ints w) == 1 + S.last w
-prop_peak   = forAllPermEq  (peak  . ints)  S.peak
-prop_vall   = forAllPermEq  (vall  . ints)  S.vall
-prop_dasc   = forAllPermEq  (dasc  . ints)  S.dasc
-prop_ddes   = forAllPermEq  (ddes  . ints)  S.ddes
-prop_ep     = forAllPermEq  (ep    . ints)  S.ep
-prop_lir    = forAllPermEq  (lir   . ints)  S.lir
-prop_ldr    = forAllPermEq  (ldr   . ints)  S.ldr
-prop_rir    = forAllPermEq  (rir   . ints)  S.rir
-prop_rdr    = forAllPermEq  (rdr   . ints)  S.rdr
-prop_comp   = forAllPermEq  (comp  . ints)  S.comp
-prop_scomp  = forAllPermEq  (scomp . ints)  S.scomp
-prop_dim    = forAllPermEq  (dim   . ints)  S.dim
-prop_asc0   = forAllPermEq  (asc0  . ints)  S.asc0
-prop_des0   = forAllPermEq  (des0  . ints)  S.des0
-prop_shad   = forAllPermEq  (shad  . ints)  S.shad
-prop_inv_21 = forAll (resize 30 arbitrary) $ \w -> S.inv (w :: IntPerm) == Sym.stat ("21" :: CharPerm) w
-
-testsStat =
-    [ ("asc",          check prop_asc)
-    , ("des",          check prop_des)
-    , ("exc",          check prop_exc)
-    , ("fp",           check prop_fp)
-    , ("cyc",          check prop_cyc)
-    , ("inv",          check prop_inv)
-    , ("maj",          check prop_maj)
-    , ("comaj",        check prop_comaj)
-    , ("lmin",         check prop_lmin)
-    , ("lmax",         check prop_lmax)
-    , ("rmin",         check prop_rmin)
-    , ("rmax",         check prop_rmax)
-    , ("head",         check prop_head)
-    , ("last",         check prop_last)
-    , ("peak",         check prop_peak)
-    , ("vall",         check prop_vall)
-    , ("dasc",         check prop_dasc)
-    , ("ddes",         check prop_ddes)
-    , ("ep",           check prop_ep)
-    , ("lir",          check prop_lir)
-    , ("ldr",          check prop_ldr)
-    , ("rir",          check prop_rir)
-    , ("rdr",          check prop_rdr)
-    , ("comp",         check prop_comp)
-    , ("scomp",        check prop_scomp)
-    , ("dim",          check prop_dim)
-    , ("asc0",         check prop_asc0)
-    , ("des0",         check prop_des0)
-    , ("shad",         check prop_shad)
-    , ("inv/21",       check prop_inv_21)
+testsMathPermSort =
+    [ ("Math.Perm.Sort/stack/def",    check prop_stackDef)
+    , ("Math.Perm.Sort/bubble/def",   check prop_bubbleDef)
+    , ("Math.Perm.Sort/stack/Av",     check prop_stackAv)
+    , ("Math.Perm.Sort/bubble/Av",    check prop_bubbleAv)
     ]
 
----------------------------------------------------------------------------------
--- Properties for Math.Sym.Class
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Properties for Math.Perm.Stat
+--------------------------------------------------------------------------------
 
-agreesWithBasis bs cls m =
-    and [ sort (Sym.av (map Sym.st bs) n) == sort (cls n) | n<-[0..m] ]
+statEq f g w = f w == g (P.toList w)
 
-prop_av231      = agreesWithBasis ["231" :: CharPerm]          C.av231      7
-prop_vee        = agreesWithBasis ["132", "231" :: CharPerm]   C.vee        7
-prop_caret      = agreesWithBasis ["213", "312" :: CharPerm]   C.caret      7
-prop_gt         = agreesWithBasis ["132", "312" :: CharPerm]   C.gt         7
-prop_lt         = agreesWithBasis ["213", "231" :: CharPerm]   C.lt         7
-prop_separables = agreesWithBasis ["2413", "3142" :: CharPerm] C.separables 7
+prop_asc    = statEq S.asc   LS.asc
+prop_des    = statEq S.des   LS.des
+prop_exc    = statEq S.exc   LS.exc
+prop_fp     = statEq S.fp    LS.fp
+prop_cyc    = statEq S.cyc   LS.cyc
+prop_inv    = statEq S.inv   LS.inv
+prop_maj    = statEq S.maj   LS.maj
+prop_comaj  = statEq S.comaj LS.comaj
+prop_lmin   = statEq S.lmin  LS.lmin
+prop_lmax   = statEq S.lmax  LS.lmax
+prop_rmin   = statEq S.rmin  LS.rmin
+prop_rmax   = statEq S.rmax  LS.rmax
+prop_head w = P.size w > 0 ==> statEq S.head head w
+prop_last w = P.size w > 0 ==> statEq S.last last w
+prop_peak   = statEq S.peak  LS.peak
+prop_vall   = statEq S.vall  LS.vall
+prop_dasc   = statEq S.dasc  LS.dasc
+prop_ddes   = statEq S.ddes  LS.ddes
+prop_ep     = statEq S.ep    LS.ep
+prop_lir    = statEq S.lir   LS.lir
+prop_ldr    = statEq S.ldr   LS.ldr
+prop_rir    = statEq S.rir   LS.rir
+prop_rdr    = statEq S.rdr   LS.rdr
+prop_comp   = statEq S.comp  LS.comp
+prop_scomp  = statEq S.scomp LS.scomp
+prop_dim    = statEq S.dim   LS.dim
+prop_asc0   = statEq S.asc0  LS.asc0
+prop_des0   = statEq S.des0  LS.des0
+prop_inv_21 = forAll (resize 17 arbitrary) $ \w ->
+                 let stat21 = length . P.copiesOf (P.fromList [1,0])
+                 in S.inv w == stat21 w
 
-testsClass =
-    [ ("av231",        check prop_av231)
-    , ("vee",          check prop_vee)
-    , ("caret",        check prop_caret)
-    , ("gt",           check prop_gt)
-    , ("lt",           check prop_lt)
-    , ("separables",   check prop_separables)
+-- prop_shad   = forAllPermEq  (shad  . ints)  S.shad
+
+
+testsMathPermStat =
+    [ ("Math.Perm.Stat/asc",        check prop_asc)
+    , ("Math.Perm.Stat/des",        check prop_des)
+    , ("Math.Perm.Stat/exc",        check prop_exc)
+    , ("Math.Perm.Stat/fp",         check prop_fp)
+    , ("Math.Perm.Stat/cyc",        check prop_cyc)
+    , ("Math.Perm.Stat/inv",        check prop_inv)
+    , ("Math.Perm.Stat/maj",        check prop_maj)
+    , ("Math.Perm.Stat/comaj",      check prop_comaj)
+    , ("Math.Perm.Stat/lmin",       check prop_lmin)
+    , ("Math.Perm.Stat/lmax",       check prop_lmax)
+    , ("Math.Perm.Stat/rmin",       check prop_rmin)
+    , ("Math.Perm.Stat/rmax",       check prop_rmax)
+    , ("Math.Perm.Stat/head",       check prop_head)
+    , ("Math.Perm.Stat/last",       check prop_last)
+    , ("Math.Perm.Stat/peak",       check prop_peak)
+    , ("Math.Perm.Stat/vall",       check prop_vall)
+    , ("Math.Perm.Stat/dasc",       check prop_dasc)
+    , ("Math.Perm.Stat/ddes",       check prop_ddes)
+    , ("Math.Perm.Stat/ep",         check prop_ep)
+    , ("Math.Perm.Stat/lir",        check prop_lir)
+    , ("Math.Perm.Stat/ldr",        check prop_ldr)
+    , ("Math.Perm.Stat/rir",        check prop_rir)
+    , ("Math.Perm.Stat/rdr",        check prop_rdr)
+    , ("Math.Perm.Stat/comp",       check prop_comp)
+    , ("Math.Perm.Stat/scomp",      check prop_scomp)
+    , ("Math.Perm.Stat/dim",        check prop_dim)
+    , ("Math.Perm.Stat/asc0",       check prop_asc0)
+    , ("Math.Perm.Stat/des0",       check prop_des0)
+    , ("Math.Perm.Stat/inv/21",     check prop_inv_21)
+--     , ("shad",       check prop_shad)
     ]
 
----------------------------------------------------------------------------------
--- Properties for Math.Sym.Bijection
----------------------------------------------------------------------------------
-
-prop_simionSchmidt_avoid =
-    forAll (resize 15 arbitrary) $ \w ->
-        (w :: CharPerm) `Sym.avoids` ("123" :: CharPerm) ==> B.simionSchmidt w `Sym.avoids` ("132" :: CharPerm)
-
-prop_simionSchmidt_avoid' =
-    forAll (resize 15 arbitrary) $ \w ->
-        (w :: CharPerm) `Sym.avoids` ("132" :: CharPerm) ==> B.simionSchmidt' w `Sym.avoids` ("123" :: CharPerm)
-
-prop_simionSchmidt_id =
-    forAll (resize 15 arbitrary) $ \w ->
-        (w :: CharPerm) `Sym.avoids` ("123" :: CharPerm) ==> B.simionSchmidt' (B.simionSchmidt w) == w
-
-prop_simionSchmidt_id' =
-    forAll (resize 15 arbitrary) $ \w ->
-        (w :: CharPerm) `Sym.avoids` ("132" :: CharPerm) ==> B.simionSchmidt (B.simionSchmidt' w) == w
-
-testsBijection =
-    [ ("simionSchmidt/avoid",   check prop_simionSchmidt_avoid)
-    , ("simionSchmidt'/avoid",  check prop_simionSchmidt_avoid')
-    , ("simionSchmidt/id",      check prop_simionSchmidt_id)
-    , ("simionSchmidt'/id",     check prop_simionSchmidt_id')
-    ]
-
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- Main
----------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-tests = testsPerm ++ testsD8 ++ testsStat ++ testsClass ++ testsBijection
+tests = concat [
+          testsDataPerm
+        , testsDataPermgram
+        , testsMathPerm
+        , testsMathPermPattern
+        , testsMathPermD8
+        , testsMathPermGroup
+        , testsMathPermBijection
+        , testsMathPermSort
+        , testsMathPermStat
+        ]
 
 runTests = mapM_ (\(name, t) -> putStr (name ++ ":\t") >> t)
 
