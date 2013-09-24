@@ -55,3 +55,4 @@ library
 
   include-dirs:        include
   includes:            rank.h, stat.h, d8.h, group.h, bij.h, ordiso.h, bit.h, simple.h, sortop.h
+  install-includes:    rank.h, stat.h, d8.h, group.h, bij.h, ordiso.h, bit.h, simple.h, sortop.h
