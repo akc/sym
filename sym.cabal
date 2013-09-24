@@ -37,10 +37,10 @@ library
 
   other-modules:       Data.Perm.Internal
 
-  build-depends:       base >=4.5, array >=0.4, hashable >=1.1, QuickCheck >=2.5
+  build-depends:       base >= 3 && <= 4.7, array >=0.4, hashable >=1.1, QuickCheck >=2.5
 
   ghc-prof-options:    -auto-all
-  ghc-options:         -Wall -O
+  ghc-options:         -Wall
   cc-options:          -Wall
 
   c-sources:           cbits/rank.c
