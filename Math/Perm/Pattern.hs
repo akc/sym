@@ -46,7 +46,7 @@ ordiso u v m =
            return . toBool $ c_ordiso u' v' m' k
 {-# INLINE ordiso #-}
 
--- | @copies p w@ is the list of sets that represent copies of @p@ in @w@.
+-- | @copiesOf p w@ is the list of sets that represent copies of @p@ in @w@.
 copiesOf :: Pattern -> Perm -> [Set]
 copiesOf p w = filter (ordiso p w) $ subsets (size w) (size p)
 {-# INLINE copiesOf #-}
