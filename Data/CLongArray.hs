@@ -139,7 +139,7 @@ imap f w = inlinePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
 -- | Apply a function to corresponding pairs of elements and their (shared) index.
 izipWith :: (Int -> CLong -> CLong -> CLong) -> CLongArray -> CLongArray -> CLongArray
 izipWith f u v =
-    inlinePerformIO . unsafeWith u $ \p -> unsafeWith u $ \q -> unsafeNew n (go 0 p q)
+    inlinePerformIO . unsafeWith u $ \p -> unsafeWith v $ \q -> unsafeNew n (go 0 p q)
     where
       n = min (size u) (size v)
       go i p q r
