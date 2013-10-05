@@ -24,6 +24,7 @@ module Data.CLongArray
 
     -- * Map
     , imap
+    , izipWith
 
     -- * Low level functions
     , unsafeNew
@@ -120,8 +121,8 @@ unsafeAt w = fromIntegral . inlinePerformIO . unsafeWith w . flip peekElemOff
 {-# INLINE unsafeAt #-}
 
 
--- Map
--- ---
+-- Map and Zip
+-- -----------
 
 -- | Apply a function to every element of an array and its index.
 imap :: (Int -> CLong -> CLong) -> CLongArray -> CLongArray
@@ -135,6 +136,19 @@ imap f w = inlinePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
             poke q (f i x)
             go (i+1) (advancePtr p 1) (advancePtr q 1)
 
+-- | Apply a function to corresponding pairs of elements and their (shared) index.
+izipWith :: (Int -> CLong -> CLong -> CLong) -> CLongArray -> CLongArray -> CLongArray
+izipWith f u v =
+    inlinePerformIO . unsafeWith u $ \p -> unsafeWith u $ \q -> unsafeNew n (go 0 p q)
+    where
+      n = min (size u) (size v)
+      go i p q r
+        | i >= n = return ()
+        | otherwise = do
+            x <- peek p
+            y <- peek q
+            poke r (f i x y)
+            go (i+1) (advancePtr p 1) (advancePtr q 1) (advancePtr r 1)
 
 -- Low level functions
 -- -------------------
