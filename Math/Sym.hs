@@ -14,6 +14,8 @@ module Math.Sym
     ) where
 
 import Data.Ord
+import Data.SSYT (SSYTPair (..))
+import qualified Data.SSYT as Y
 import Data.List
 import Math.Perm (Perm)
 import qualified Math.Perm as P
@@ -26,7 +28,7 @@ import qualified Math.Perm.D8 as D8
 -- | The class of permutations. Minimal complete definition: 'st',
 -- 'act' and 'idperm'. The default implementation of 'size' can be
 -- somewhat slow, so you may want to implement it as well.
-class Ord a => Permutation a where
+class Permutation a where
 
     -- | The standardization map. If there is an underlying linear
     -- order on @a@ then @st@ is determined by the unique order
@@ -111,6 +113,14 @@ instance Permutation String where
     size     = length
     idperm n = take n $ ['1'..'9'] ++ ['A'..'Z'] ++ ['a'..]
 
+instance Permutation SSYTPair where
+    st = Y.toPerm
+    unst = Y.fromPerm
+    u `act` v = unst $ u `act` (st v)
+    size (SSYTPair p _) = sum $ map length p
+    idperm n = SSYTPair p p where p = [[0..n-1]]
+    inverse (SSYTPair p q) = SSYTPair q p
+
 -- | The list of all permutations of the given size.
 perms :: Permutation a => Int -> [a]
 perms = map unst . P.perms
@@ -122,4 +132,3 @@ lift f = unst . f . st
 -- | Like 'lift' but for functions of two variables.
 lift2 :: (Permutation a) => (Perm -> Perm -> Perm) -> a -> a -> a
 lift2 f u v = unst $ f (st u) (st v)
-
