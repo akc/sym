@@ -41,8 +41,8 @@ module Math.Perm.Stat
     , dim         -- dimension
     , asc0        -- small ascents
     , des0        -- small descents
-    , is          -- longest increasing subsequence
-    , ds          -- longest decreasing subsequence
+    , lis         -- longest increasing subsequence
+    , lds         -- longest decreasing subsequence
 --    , shad        -- shadow
     ) where
 
@@ -274,15 +274,14 @@ des0 :: Perm -> Int
 des0 = marshal c_des0
 
 -- | The longest increasing subsequence.
-is :: Perm -> Int
-is w = let t = Y.fromPerm w
-       in case Y.null t of
-            True  -> 0
-            False -> length . Prelude.head $ Y.recordingTableau t
+lis :: Perm -> Int
+lis w = case Y.shape (Y.fromPerm w) of
+          []    -> 0
+          (x:_) -> x
 
 -- | The longest decreasing subsequence.
-ds :: Perm -> Int
-ds = length . Y.recordingTableau . Y.fromPerm
+lds :: Perm -> Int
+lds = length . Y.recordingTableau . Y.fromPerm
 
 -- | The size of the shadow of @w@. That is, the number of different
 -- one point deletions of @w@.

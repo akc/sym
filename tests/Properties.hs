@@ -151,17 +151,36 @@ testsDataPermgram =
 -- Properties for Data.SSYT
 --------------------------------------------------------------------------------
 
-pairs :: GPerm -> Y.GeneralizedPerm
-pairs (GPerm w) = w
+swap (x,y) = (y,x)
 
-prop_RSK w = w' == Y.toGeneralizedPerm (Y.fromGeneralizedPerm w')
-    where w' = pairs w
+inverseGeneralizedPerm = sort . map swap
+
+prop_RSK (GPerm w) = w == Y.toGeneralizedPerm (Y.fromGeneralizedPerm w)
+
+prop_RSKInverse (GPerm w) = (p, q) == (s, r)
+    where
+      Y.SSYTPair p q = Y.fromGeneralizedPerm w
+      Y.SSYTPair r s = Y.fromGeneralizedPerm $ inverseGeneralizedPerm w
 
 prop_RS w = w == Y.toPerm (Y.fromPerm w)
 
+prop_RSInverse w = (p, q) == (s, r)
+    where
+      Y.SSYTPair p q = Y.fromPerm w
+      Y.SSYTPair r s = Y.fromPerm $ D8.inverse w
+
+prop_RSfp w = S.fp v == length (filter odd (Y.shape (transpose q)))
+    where
+      Y.SSYTPair p _ = Y.fromPerm w
+      v = Y.toPerm $ Y.SSYTPair p p -- Kludge to get an involution
+      Y.SSYTPair _ q = Y.fromPerm v
+
 testsDataSSYT =
-    [ ("Data.SSYT/RSK/Bijection",            check prop_RSK)
-    , ("Data.SSYT/RS/Bijection",             check prop_RS)
+    [ ("Data.SSYT/RSK/Bijection",    check prop_RSK)
+    , ("Data.SSYT/RSK/Inverse",      check prop_RSKInverse)
+    , ("Data.SSYT/RS/Bijection",     check prop_RS)
+    , ("Data.SSYT/RS/Inverse",       check prop_RSInverse)
+    , ("Data.SSYT/RS/fp",            check prop_RSfp)
     ]
 
 --------------------------------------------------------------------------------
@@ -412,11 +431,11 @@ prop_des0   = statEq S.des0  LS.des0
 prop_inv_21 = forAll (resize 17 arbitrary) $ \w ->
                  let stat21 = length . P.copiesOf (P.fromList [1,0])
                  in S.inv w == stat21 w
-prop_is_r w = S.is w == S.ds (D8.reverse w)
-prop_is_c w = S.is w == S.ds (D8.complement w)
-prop_is_i w = S.is w == S.is (D8.inverse w)
-prop_ds_i w = S.ds w == S.ds (D8.inverse w)
-prop_ErdosSzekeres w = n > 0 ==> S.is w > m || S.ds w > m
+prop_lis_r w = S.lis w == S.lds (D8.reverse w)
+prop_lis_c w = S.lis w == S.lds (D8.complement w)
+prop_lis_i w = S.lis w == S.lis (D8.inverse w)
+prop_lds_i w = S.lds w == S.lds (D8.inverse w)
+prop_ErdosSzekeres w = n > 0 ==> S.lis w > m || S.lds w > m
     where
       n = P.size w
       m = floor . sqrt $ fromIntegral (n-1)
@@ -454,10 +473,10 @@ testsMathPermStat =
     , ("Math.Perm.Stat/asc0",       check prop_asc0)
     , ("Math.Perm.Stat/des0",       check prop_des0)
     , ("Math.Perm.Stat/inv/21",     check prop_inv_21)
-    , ("Math.Perm.Stat/is/r",       check prop_is_r)
-    , ("Math.Perm.Stat/is/c",       check prop_is_c)
-    , ("Math.Perm.Stat/is/i",       check prop_is_i)
-    , ("Math.Perm.Stat/ds/i",       check prop_ds_i)
+    , ("Math.Perm.Stat/lis/r",      check prop_lis_r)
+    , ("Math.Perm.Stat/lis/c",      check prop_lis_c)
+    , ("Math.Perm.Stat/lis/i",      check prop_lis_i)
+    , ("Math.Perm.Stat/lds/i",      check prop_lds_i)
     , ("Math.Perm.Stat/Erdös-Szekeres", check prop_ErdosSzekeres)
 --     , ("shad",       check prop_shad)
     ]

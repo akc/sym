@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 -- |
 -- Copyright   : Anders Claesson 2013
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
@@ -13,6 +15,7 @@ module Data.SSYT
     , Entry
     , SSYT
     , SSYTPair (..)
+    , Shape (..)
     , empty
     , null
     , display
@@ -43,6 +46,15 @@ type SSYT = [[Entry]]
 data SSYTPair = SSYTPair { insertionTableau :: SSYT
                          , recordingTableau :: SSYT
                          } deriving Eq
+
+class Shape a where
+    shape :: a -> [Int]
+
+instance Shape SSYT where
+    shape = map length
+
+instance Shape SSYTPair where
+    shape = shape . recordingTableau
 
 -- | A pair of empty Young tableaux.
 empty :: SSYTPair
