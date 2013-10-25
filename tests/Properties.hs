@@ -7,6 +7,7 @@
 
 import qualified ListStat as LS
 import Data.Perm (Perm, at)
+import qualified Data.SSYT as Y
 import qualified Math.Perm as P
 import qualified Math.Perm.Stat as S
 import qualified Math.Perm.D8 as D8
@@ -40,6 +41,15 @@ instance Arbitrary a => Arbitrary (Permgram a) where
       (n, r) <- lenRank
       xs <- vector n
       return $ permgram (P.unrank n r) xs
+
+newtype GPerm = GPerm [(Int, Int)] deriving (Eq, Show)
+
+instance Arbitrary GPerm where
+    arbitrary = sized $ \m -> do
+                  n  <- choose (0, m)
+                  xs <- vector n
+                  ys <- vector n
+                  return . GPerm . sort $ zip (map abs xs) (map abs ys)
 
 newtype PFun = PFun (Int -> Permgram Int)
 
@@ -135,6 +145,23 @@ testsDataPermgram =
     [ ("Data.Permgram/Monad/LeftId",         check prop_monadLeftId)
     , ("Data.Permgram/Monad/RightId",        check prop_monadRightId)
     , ("Data.Permgram/Monad/Associativity",  check prop_monadAssociativity)
+    ]
+
+--------------------------------------------------------------------------------
+-- Properties for Data.SSYT
+--------------------------------------------------------------------------------
+
+pairs :: GPerm -> Y.GeneralizedPerm
+pairs (GPerm w) = w
+
+prop_RSK w = w' == Y.toGeneralizedPerm (Y.fromGeneralizedPerm w')
+    where w' = pairs w
+
+prop_RS w = w == Y.toPerm (Y.fromPerm w)
+
+testsDataSSYT =
+    [ ("Data.SSYT/RSK/Bijection",            check prop_RSK)
+    , ("Data.SSYT/RS/Bijection",             check prop_RS)
     ]
 
 --------------------------------------------------------------------------------
@@ -385,6 +412,14 @@ prop_des0   = statEq S.des0  LS.des0
 prop_inv_21 = forAll (resize 17 arbitrary) $ \w ->
                  let stat21 = length . P.copiesOf (P.fromList [1,0])
                  in S.inv w == stat21 w
+prop_is_r w = S.is w == S.ds (D8.reverse w)
+prop_is_c w = S.is w == S.ds (D8.complement w)
+prop_is_i w = S.is w == S.is (D8.inverse w)
+prop_ds_i w = S.ds w == S.ds (D8.inverse w)
+prop_ErdosSzekeres w = n > 0 ==> S.is w > m || S.ds w > m
+    where
+      n = P.size w
+      m = floor . sqrt $ fromIntegral (n-1)
 
 -- prop_shad   = forAllPermEq  (shad  . ints)  S.shad
 
@@ -419,6 +454,11 @@ testsMathPermStat =
     , ("Math.Perm.Stat/asc0",       check prop_asc0)
     , ("Math.Perm.Stat/des0",       check prop_des0)
     , ("Math.Perm.Stat/inv/21",     check prop_inv_21)
+    , ("Math.Perm.Stat/is/r",       check prop_is_r)
+    , ("Math.Perm.Stat/is/c",       check prop_is_c)
+    , ("Math.Perm.Stat/is/i",       check prop_is_i)
+    , ("Math.Perm.Stat/ds/i",       check prop_ds_i)
+    , ("Math.Perm.Stat/Erdös-Szekeres", check prop_ErdosSzekeres)
 --     , ("shad",       check prop_shad)
     ]
 
@@ -429,6 +469,7 @@ testsMathPermStat =
 tests = concat [
           testsDataPerm
         , testsDataPermgram
+        , testsDataSSYT
         , testsMathPerm
         , testsMathPermPattern
         , testsMathPermD8
