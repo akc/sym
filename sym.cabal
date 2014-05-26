@@ -10,7 +10,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Anders Claesson
 maintainer:          anders.claesson@gmail.com
-category:            Data
+category:            Math
 build-type:          Simple
 cabal-version:       >=1.8
 
