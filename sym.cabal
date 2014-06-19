@@ -1,5 +1,5 @@
 name:                sym
-version:             0.9.2
+version:             0.10
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation
@@ -21,8 +21,10 @@ source-repository head
 library
   exposed-modules:     Data.CLongArray
                        Data.Perm
+                       Data.Perm.Internal
                        Data.Permgram
                        Data.SSYT
+                       Data.Size
                        Math.Perm
                        Math.Perm.Component
                        Math.Perm.Constructions
@@ -33,12 +35,12 @@ library
                        Math.Perm.Sort
                        Math.Perm.Simple
                        Math.Perm.Pattern
+                       Math.Perm.MeshPattern
                        Math.Perm.Class
                        Math.Sym
 
-  other-modules:       Data.Perm.Internal
-
-  build-depends:       base >= 3 && <= 4.7, array >=0.4, hashable >=1.1, QuickCheck >=2.5
+  build-depends:       base >= 3 && <= 4.7, array >=0.4, hashable >=1.1,
+                       QuickCheck >=2.5, containers
 
   ghc-prof-options:    -auto-all
   ghc-options:         -Wall
@@ -53,7 +55,3 @@ library
                        cbits/bit.c
                        cbits/simple.c
                        cbits/sortop.c
-
-  include-dirs:        include
-  includes:            rank.h, stat.h, d8.h, group.h, bij.h, ordiso.h, bit.h, simple.h, sortop.h
-  install-includes:    rank.h, stat.h, d8.h, group.h, bij.h, ordiso.h, bit.h, simple.h, sortop.h

@@ -10,9 +10,15 @@ module Data.Perm.Internal
       Set
     , normalize
     , subsets
+    , minima
+    , maxima
+    , powerset
+    , kSubsets
     ) where
 
 import Data.List
+import Data.Ord
+import qualified Data.Set as S
 import Data.CLongArray
 import Foreign
 import Foreign.C.Types
@@ -23,6 +29,7 @@ import System.IO.Unsafe
 -- integers.
 type Set = CLongArray
 
+
 -- Utils
 -- -----
 
@@ -30,6 +37,33 @@ type Set = CLongArray
 normalize :: Ord a => [a] -> [a]
 normalize = map head . group . sort
 
+-- | The set of minimal elements with respect to inclusion.
+minima :: Ord a => [S.Set a] -> [S.Set a]
+minima = minima' . sortBy (comparing S.size)
+  where
+    minima' [] = []
+    minima' (x:xs) = x : minima' [ y | y<-xs, not (S.isSubsetOf x y) ]
+
+-- | The set of maximal elements with respect to the given order.
+maxima :: Ord a => [S.Set a] -> [S.Set a]
+maxima = maxima' . sortBy (comparing $ \x -> -S.size x)
+  where
+    maxima' [] = []
+    maxima' (x:xs) = x : maxima' [ y | y<-xs, not (S.isSubsetOf y x) ]
+
+kSubsets :: Ord a => Int -> S.Set a -> [S.Set a]
+kSubsets 0 _ = [ S.empty ]
+kSubsets k s = if S.null s
+               then []
+               else let (x, t) = S.deleteFindMin s
+                    in kSubsets k t ++ map (S.insert x) (kSubsets (k-1) t)
+
+powerset :: Ord a => S.Set a -> [S.Set a]
+powerset s = if S.null s
+             then [s]
+             else let (x, t) = S.deleteFindMin s
+                      ts = powerset t
+                  in ts ++ map (S.insert x) ts
 
 -- Bitmasks
 -- --------

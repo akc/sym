@@ -1,4 +1,4 @@
-{-# LANGUAGE MagicHash, UnboxedTuples, ForeignFunctionInterface #-}
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 
 -- |
 -- Copyright   : Anders Claesson 2013
@@ -32,6 +32,7 @@ module Data.CLongArray
     ) where
 
 import Data.Ord
+import Data.Size
 import Foreign
 import Foreign.C.Types
 import GHC.Base
@@ -63,6 +64,10 @@ instance Ord CLongArray where
           EQ -> comparing toList u v
           x  -> x
 
+instance Size CLongArray where
+    size (CArr _ n) = n
+    {-# INLINE size #-}
+
 
 -- Conversions
 -- -----------
@@ -70,7 +75,8 @@ instance Ord CLongArray where
 -- | Construct an array from a list of elements.
 fromList :: [Int] -> CLongArray
 fromList xs = CArr p (length xs)
-    where p = inlinePerformIO $ newForeignPtr finalizerFree =<< newArray (map fromIntegral xs)
+  where
+    p = inlinePerformIO $ newForeignPtr finalizerFree =<< newArray (map fromIntegral xs)
 {-# INLINE fromList #-}
 
 -- | The list of elements.
@@ -90,27 +96,22 @@ slice ks w
 -- | Like 'slice' but without range checking.
 unsafeSlice :: [Int] -> CLongArray -> [CLongArray]
 unsafeSlice parts w = inlinePerformIO . unsafeWith w $ go parts
-    where
-      go []     _ = return []
-      go (k:ks) p = do
-        vs <- go ks (advancePtr p k)
-        v  <- unsafeNew k $ \q -> copyArray q p k
-        return (v:vs)
+  where
+    go []     _ = return []
+    go (k:ks) p = do
+      vs <- go ks (advancePtr p k)
+      v  <- unsafeNew k $ \q -> copyArray q p k
+      return (v:vs)
 
 
 -- Accessors
 -- ---------
 
--- | The size/length of the given array.
-size :: CLongArray -> Int
-size (CArr _ n) = n
-{-# INLINE size #-}
-
 -- | @w \`at\` i@ is the value of @w@ at @i@, where @i@ is in @[0..size w-1]@.
 at :: CLongArray -> Int -> Int
 at w i =
     let n = size w
-    in if (i < 0 || i >= n)
+    in if i < 0 || i >= n
        then error $ "Data.CLongArray.at: " ++ show i ++ " not in [0.." ++ show (n-1) ++ "]"
        else unsafeAt w i
 {-# INLINE at #-}
@@ -127,28 +128,28 @@ unsafeAt w = fromIntegral . inlinePerformIO . unsafeWith w . flip peekElemOff
 -- | Apply a function to every element of an array and its index.
 imap :: (Int -> CLong -> CLong) -> CLongArray -> CLongArray
 imap f w = inlinePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
-    where
-      n = size w
-      go i p q
-        | i >= n = return ()
-        | otherwise = do
-            x <- peek p
-            poke q (f i x)
-            go (i+1) (advancePtr p 1) (advancePtr q 1)
+  where
+    n = size w
+    go i p q
+      | i >= n = return ()
+      | otherwise = do
+          x <- peek p
+          poke q (f i x)
+          go (i+1) (advancePtr p 1) (advancePtr q 1)
 
 -- | Apply a function to corresponding pairs of elements and their (shared) index.
 izipWith :: (Int -> CLong -> CLong -> CLong) -> CLongArray -> CLongArray -> CLongArray
 izipWith f u v =
     inlinePerformIO . unsafeWith u $ \p -> unsafeWith v $ \q -> unsafeNew n (go 0 p q)
-    where
-      n = min (size u) (size v)
-      go i p q r
-        | i >= n = return ()
-        | otherwise = do
-            x <- peek p
-            y <- peek q
-            poke r (f i x y)
-            go (i+1) (advancePtr p 1) (advancePtr q 1) (advancePtr r 1)
+  where
+    n = min (size u) (size v)
+    go i p q r
+      | i >= n = return ()
+      | otherwise = do
+          x <- peek p
+          y <- peek q
+          poke r (f i x y)
+          go (i+1) (advancePtr p 1) (advancePtr q 1) (advancePtr r 1)
 
 -- Low level functions
 -- -------------------

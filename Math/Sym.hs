@@ -116,7 +116,7 @@ instance Permutation String where
 instance Permutation SSYTPair where
     st = Y.toPerm
     unst = Y.fromPerm
-    u `act` v = unst $ u `act` (st v)
+    u `act` v = unst $ u `act` st v
     size (SSYTPair p _) = sum $ map length p
     idperm n = SSYTPair p p where p = [[0..n-1]]
     inverse (SSYTPair p q) = SSYTPair q p

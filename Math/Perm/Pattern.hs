@@ -22,7 +22,7 @@ module Math.Perm.Pattern
     ) where
 
 import Data.Perm (Perm, perms)
-import Data.Perm.Internal
+import Data.Perm.Internal hiding (minima, maxima)
 import Data.CLongArray
 import Foreign
 import Foreign.C.Types
@@ -80,13 +80,15 @@ avoiders1 q vs@(v:_) = filter avoids_q us ++ filter (`avoids` q) ws
       xs = subsets n k
       avoids_q u = not $ any (ordiso q u) xs
 
--- | The set of minimal elements with respect to containment.
+-- | The set of minimal elements with respect to containment.  FIX: Poor
+-- implementation
 minima :: [Pattern] -> [Pattern]
 minima [] = []
 minima ws = let (v:vs) = normalize ws
             in v : minima (avoiders [v] vs)
 
--- | The set of maximal elements with respect to containment.
+-- | The set of maximal elements with respect to containment. FIX: Poor
+-- implementation
 maxima :: [Pattern] -> [Pattern]
 maxima [] = []
 maxima ws = let (v:vs) = reverse $ normalize ws
