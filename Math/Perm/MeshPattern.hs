@@ -27,6 +27,7 @@ module Math.Perm.MeshPattern
     , vincular
     , kBivincular
     , bivincular
+    , meshPatterns
     ) where
 
 import Data.List hiding (union)
@@ -80,6 +81,7 @@ kVincular k w = (\xs -> cols (toList xs) (pattern w)) `fmap` subsets (1+size w) 
 vincular :: Perm -> [MeshPattern]
 vincular w = [0..1+size w] >>= flip kVincular w
 
+-- WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 kBivincular :: Int -> Perm -> [MeshPattern]
 kBivincular k w =
     [ rows (toList ys) $ cols (toList xs) (pattern w) | xs <- sets, ys <- sets ]
@@ -89,6 +91,12 @@ kBivincular k w =
 
 bivincular :: Perm -> [MeshPattern]
 bivincular w = [0..1+size w] >>= flip kBivincular w
+
+fullMesh :: Int -> Mesh
+fullMesh n = Set.fromList [ (x,y) | x <- range, y <- range ] where range = [0..n]
+
+meshPatterns :: Perm -> [MeshPattern]
+meshPatterns w = [ MP w r | r <- powerset (fullMesh (size w)) ]
 
 match' :: MeshPattern -> PermTwoLine -> PermTwoLine -> Bool
 match' (MP u r) v w =
