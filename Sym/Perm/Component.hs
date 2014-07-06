@@ -5,7 +5,7 @@
 -- Components of permutations.
 -- 
 
-module Math.Perm.Component
+module Sym.Perm.Component
     (
       components
     , skewComponents
@@ -17,8 +17,8 @@ module Math.Perm.Component
 
 import Foreign
 import System.IO.Unsafe
-import Data.Perm
-import qualified Math.Perm.D8 as D8
+import Sym.Perm
+import qualified Sym.Perm.D8 as D8
 
 -- Positions /i/ such that /max{ w[j] : j <= i } = i/. These positions
 -- mark the boundaries of components.

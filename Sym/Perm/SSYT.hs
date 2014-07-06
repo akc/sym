@@ -9,7 +9,7 @@
 -- words, this module implements the Robinson-Schensted-Knuth (RSK)
 -- correspondence.
 
-module Data.SSYT
+module Sym.Perm.SSYT
     (
       GeneralizedPerm
     , Entry
@@ -27,7 +27,7 @@ module Data.SSYT
 
 import Prelude    hiding (null)
 import Data.List  hiding (null)
-import Data.Perm
+import Sym.Perm
 
 type Row = Int
 

@@ -1,5 +1,5 @@
 name:                sym
-version:             0.10
+version:             0.11
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation
@@ -19,28 +19,32 @@ source-repository head
   location:            git://github.com/akc/sym.git
 
 library
-  exposed-modules:     Data.CLongArray
-                       Data.Perm
-                       Data.Perm.Internal
-                       Data.Permgram
-                       Data.SSYT
-                       Data.Size
-                       Math.Perm
-                       Math.Perm.Component
-                       Math.Perm.Constructions
-                       Math.Perm.D8
-                       Math.Perm.Group
-                       Math.Perm.Bijection
-                       Math.Perm.Stat
-                       Math.Perm.Sort
-                       Math.Perm.Simple
-                       Math.Perm.Pattern
-                       Math.Perm.MeshPattern
-                       Math.Perm.Class
-                       Math.Sym
+  exposed-modules:     Sym
+                       Sym.Perm
+                       Sym.Perm.Meta
+                       Sym.Perm.SSYT
+                       Sym.Perm.Component
+                       Sym.Perm.Constructions
+                       Sym.Perm.D8
+                       Sym.Perm.Group
+                       Sym.Perm.Bijection
+                       Sym.Perm.Stat
+                       Sym.Perm.Sort
+                       Sym.Perm.Simple
+                       Sym.Perm.Pattern
+                       Sym.Perm.MeshPattern
+                       Sym.Perm.Class
+                       Sym.Permgram
+                       Sym.Internal.SubSeq
+                       Sym.Internal.CLongArray
+                       Sym.Internal.Size
+                       Sym.Internal.Util
 
-  build-depends:       base >= 3 && <= 4.7, array >=0.4, hashable >=1.1,
-                       QuickCheck >=2.5, containers
+  build-depends:       base >= 3 && <= 4.7,
+                       array >=0.4,
+                       hashable >=1.1,
+                       containers,
+                       QuickCheck >=2.5
 
   ghc-prof-options:    -auto-all
   ghc-options:         -Wall

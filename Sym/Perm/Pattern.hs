@@ -5,12 +5,12 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.Pattern
+module Sym.Perm.Pattern
     (
       Pattern
-    , Set
+    , SubSeq
     , ordiso
-    , subsets
+    , choose
     , copiesOf
     , contains
     , avoids
@@ -21,9 +21,9 @@ module Math.Perm.Pattern
     , coeff
     ) where
 
-import Data.Perm (Perm, perms)
-import Data.Perm.Internal hiding (minima, maxima)
-import Data.CLongArray
+import Sym.Perm (Perm, perms)
+import Sym.Internal.SubSeq
+import Sym.Internal.Util (nubSort)
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe
@@ -36,7 +36,7 @@ foreign import ccall unsafe "ordiso.h ordiso" c_ordiso
 
 -- | @ordiso u v m@ determines whether the subword in @v@ specified by
 -- @m@ is order isomorphic to @u@.
-ordiso :: Perm -> Perm -> Set -> Bool
+ordiso :: Pattern -> Perm -> SubSeq -> Bool
 ordiso u v m =
     let k = fromIntegral (size u)
     in unsafeDupablePerformIO $
@@ -47,8 +47,8 @@ ordiso u v m =
 {-# INLINE ordiso #-}
 
 -- | @copiesOf p w@ is the list of sets that represent copies of @p@ in @w@.
-copiesOf :: Pattern -> Perm -> [Set]
-copiesOf p w = filter (ordiso p w) $ subsets (size w) (size p)
+copiesOf :: Pattern -> Perm -> [SubSeq]
+copiesOf p w = filter (ordiso p w) $ size w `choose` size p
 {-# INLINE copiesOf #-}
 
 -- | @w `contains` p@ is a predicate determining if @w@ contains the pattern @p@.
@@ -77,21 +77,21 @@ avoiders1 q vs@(v:_) = filter avoids_q us ++ filter (`avoids` q) ws
       n = size v
       k = size q
       (us, ws) = span (\u -> size u == n) vs
-      xs = subsets n k
+      xs = n `choose` k
       avoids_q u = not $ any (ordiso q u) xs
 
 -- | The set of minimal elements with respect to containment.  FIX: Poor
 -- implementation
 minima :: [Pattern] -> [Pattern]
 minima [] = []
-minima ws = let (v:vs) = normalize ws
+minima ws = let (v:vs) = nubSort ws
             in v : minima (avoiders [v] vs)
 
 -- | The set of maximal elements with respect to containment. FIX: Poor
 -- implementation
 maxima :: [Pattern] -> [Pattern]
 maxima [] = []
-maxima ws = let (v:vs) = reverse $ normalize ws
+maxima ws = let (v:vs) = reverse $ nubSort ws
             in v : maxima (filter (avoids v) vs)
 
 -- | @coeff f v@ is the coefficient of @v@ when expanding the

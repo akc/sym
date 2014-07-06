@@ -6,9 +6,9 @@
 --
 -- Generating permutations: rank and unrank
 
-module Data.Perm
+module Sym.Perm
     (
-      module Data.CLongArray
+      module Sym.Internal.CLongArray
     , Perm
     , emptyperm
     , one
@@ -21,7 +21,7 @@ module Data.Perm
     ) where
 
 import Data.List
-import Data.CLongArray
+import Sym.Internal.CLongArray
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe

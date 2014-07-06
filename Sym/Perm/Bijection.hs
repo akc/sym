@@ -5,13 +5,13 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.Bijection
+module Sym.Perm.Bijection
     (
       simionSchmidt
     , simionSchmidt'
     ) where
 
-import Data.Perm
+import Sym.Perm
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe

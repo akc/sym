@@ -5,7 +5,7 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.D8
+module Sym.Perm.D8
     (
     -- * The group elements
       r0, r1, r2, r3
@@ -26,11 +26,11 @@ module Math.Perm.D8
     , inverse
     ) where
 
-import Data.List hiding (reverse)
-import Prelude hiding (reverse)
-import Data.Perm
-import Data.Perm.Internal
-import Foreign hiding (complement, rotate)
+import Prelude           hiding (reverse)
+import Data.List         hiding (reverse)
+import Sym.Internal.Util
+import Sym.Perm
+import Foreign           hiding (complement, rotate)
 import Foreign.C.Types
 import System.IO.Unsafe
 
@@ -94,7 +94,7 @@ klein4 = [r0, r2, s0, s1]
 -- > orbit klein4 "2314" == ["1423","2314","3241","4132"]
 -- 
 orbit :: [Perm -> Perm] -> Perm -> [Perm]
-orbit fs x = normalize [ f x | f <- fs ]
+orbit fs x = nubSort [ f x | f <- fs ]
 
 -- | @symmetryClasses fs xs@ is the list of equivalence classes under
 -- the action of the /group/ of functions @fs@.

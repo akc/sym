@@ -5,65 +5,21 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Data.Perm.Internal
+module Sym.Internal.SubSeq
     (
-      Set
-    , normalize
-    , subsets
-    , minima
-    , maxima
-    , powerset
-    , kSubsets
+      module Sym.Internal.CLongArray
+    , SubSeq
+    , choose
     ) where
 
-import Data.List
-import Data.Ord
-import qualified Data.Set as S
-import Data.CLongArray
+import Sym.Internal.CLongArray
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe
 
-
--- | A set is represented by an increasing array of non-negative
+-- | A SubSeq is represented by an increasing array of non-negative
 -- integers.
-type Set = CLongArray
-
-
--- Utils
--- -----
-
--- | Sort and remove duplicates.
-normalize :: Ord a => [a] -> [a]
-normalize = map head . group . sort
-
--- | The set of minimal elements with respect to inclusion.
-minima :: Ord a => [S.Set a] -> [S.Set a]
-minima = minima' . sortBy (comparing S.size)
-  where
-    minima' [] = []
-    minima' (x:xs) = x : minima' [ y | y<-xs, not (S.isSubsetOf x y) ]
-
--- | The set of maximal elements with respect to the given order.
-maxima :: Ord a => [S.Set a] -> [S.Set a]
-maxima = maxima' . sortBy (comparing $ \x -> -S.size x)
-  where
-    maxima' [] = []
-    maxima' (x:xs) = x : maxima' [ y | y<-xs, not (S.isSubsetOf y x) ]
-
-kSubsets :: Ord a => Int -> S.Set a -> [S.Set a]
-kSubsets 0 _ = [ S.empty ]
-kSubsets k s = if S.null s
-               then []
-               else let (x, t) = S.deleteFindMin s
-                    in kSubsets k t ++ map (S.insert x) (kSubsets (k-1) t)
-
-powerset :: Ord a => S.Set a -> [S.Set a]
-powerset s = if S.null s
-             then [s]
-             else let (x, t) = S.deleteFindMin s
-                      ts = powerset t
-                  in ts ++ map (S.insert x) ts
+type SubSeq = CLongArray
 
 -- Bitmasks
 -- --------
@@ -73,12 +29,12 @@ class (Bits a, Integral a) => Bitmask a where
     -- | Lexicographically, the next bitmask with the same Hamming weight.
     next :: a -> a
 
-    -- | @ones k m@ is the set of indices whose bits are set in
-    -- @m@. Default implementation:
+    -- | @ones k m@ is the set / subsequence of indices whose bits are
+    -- set in @m@. Default implementation:
     -- 
     -- > ones m = fromListN (popCount m) $ filter (testBit m) [0..]
     -- 
-    ones :: a -> CLongArray
+    ones :: a -> SubSeq
     ones m = fromList . take (popCount m) $ filter (testBit m) [0..]
 
 instance Bitmask CLong where
@@ -97,10 +53,10 @@ bitmasks n k = take binomial (iterate next ((1 `shiftL` k) - 1))
       k' = toInteger k
       binomial = fromIntegral $ product [n', n'-1 .. n'-k'+1] `div` product [1..k']
 
--- | @subsets n k@ is the list of subsets of @[0..n-1]@ with @k@
+-- | @n \`choose\` k@ is the list of subsequences of @[0..n-1]@ with @k@
 -- elements.
-subsets :: Int -> Int -> [Set]
-subsets n k
+choose :: Int -> Int -> [SubSeq]
+choose n k
     | n <= 32   = map ones (bitmasks n k :: [CLong])
     | otherwise = map ones (bitmasks n k :: [Integer])
 

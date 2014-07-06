@@ -5,7 +5,7 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Sym
+module Sym
     (
       Permutation(..)
     , perms
@@ -14,12 +14,12 @@ module Math.Sym
     ) where
 
 import Data.Ord
-import Data.SSYT (SSYTPair (..))
-import qualified Data.SSYT as Y
+import Sym.Perm.SSYT (SSYTPair (..))
+import qualified Sym.Perm.SSYT as Y
 import Data.List
-import Math.Perm (Perm)
-import qualified Math.Perm as P
-import qualified Math.Perm.D8 as D8
+import Sym.Perm.Meta (Perm)
+import qualified Sym.Perm.Meta as P
+import qualified Sym.Perm.D8 as D8
 
 
 -- The permutation typeclass

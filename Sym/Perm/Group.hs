@@ -5,17 +5,16 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.Group
+module Sym.Perm.Group
     (
       compose
     , act
     ) where
 
-import Data.Perm
+import Sym.Perm
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe
-
 
 marshal :: (Ptr CLong -> Ptr CLong -> CLong -> Ptr CLong -> CLong -> IO ())
         -> Perm -> Perm -> Perm

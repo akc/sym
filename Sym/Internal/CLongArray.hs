@@ -6,7 +6,7 @@
 --
 -- Convenience functions for dealing with arrays of 'CLong's.
 
-module Data.CLongArray
+module Sym.Internal.CLongArray
     (
     -- * Data type
     CLongArray
@@ -32,7 +32,7 @@ module Data.CLongArray
     ) where
 
 import Data.Ord
-import Data.Size
+import Sym.Internal.Size
 import Foreign
 import Foreign.C.Types
 import GHC.Base
@@ -89,8 +89,8 @@ toList w = map fromIntegral . inlinePerformIO . unsafeWith w $ peekArray (size w
 -- size of the array.
 slice :: [Int] -> CLongArray -> [CLongArray]
 slice ks w
-    | any (<=0) ks     = error "Data.CLongArray.slice: zero or negative parts"
-    | sum ks /= size w = error "Data.CLongArray.slice: parts doesn't sum to size of array"
+    | any (<=0) ks     = error "Sym.Internal.CLongArray.slice: zero or negative parts"
+    | sum ks /= size w = error "Sym.Internal.CLongArray.slice: parts doesn't sum to size of array"
     | otherwise        = unsafeSlice ks w
 
 -- | Like 'slice' but without range checking.
@@ -112,7 +112,7 @@ at :: CLongArray -> Int -> Int
 at w i =
     let n = size w
     in if i < 0 || i >= n
-       then error $ "Data.CLongArray.at: " ++ show i ++ " not in [0.." ++ show (n-1) ++ "]"
+       then error $ "Sym.Internal.CLongArray.at: " ++ show i ++ " not in [0.." ++ show (n-1) ++ "]"
        else unsafeAt w i
 {-# INLINE at #-}
 

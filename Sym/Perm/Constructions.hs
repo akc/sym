@@ -5,7 +5,7 @@
 -- Sum, skew sum, etc
 -- 
 
-module Math.Perm.Constructions
+module Sym.Perm.Constructions
     (
       (/+/)
     , (\-\)
@@ -17,9 +17,9 @@ module Math.Perm.Constructions
 import Foreign
 import System.IO.Unsafe
 import Control.Monad
-import Data.Perm
-import qualified Data.Permgram as G
-import qualified Math.Perm.D8 as D8
+import Sym.Perm
+import qualified Sym.Permgram as G
+import qualified Sym.Perm.D8 as D8
 
 infixl 6 /+/
 infixl 6 \-\

@@ -5,12 +5,12 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.Simple
+module Sym.Perm.Simple
     (
      simple
     ) where
 
-import Data.Perm
+import Sym.Perm
 import Foreign
 import Foreign.C.Types
 import System.IO.Unsafe

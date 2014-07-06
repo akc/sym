@@ -7,10 +7,10 @@
 -- Common permutation statistics. To avoid name clashes this module is
 -- best imported @qualified@; e.g.
 -- 
--- > import qualified Math.Perm.Stat as S
+-- > import qualified Sym.Perm.Stat as S
 -- 
 
-module Math.Perm.Stat 
+module Sym.Perm.Stat 
     (
       asc         -- ascents
     , des         -- descents
@@ -48,9 +48,9 @@ module Math.Perm.Stat
 
 import Prelude hiding (head, last)
 import qualified Prelude
-import Data.Perm
-import qualified Data.SSYT as Y
-import qualified Math.Perm.D8 as D8
+import Sym.Perm
+import qualified Sym.Perm.SSYT as Y
+import qualified Sym.Perm.D8 as D8
 import Foreign.Ptr
 import Foreign.C.Types
 import System.IO.Unsafe

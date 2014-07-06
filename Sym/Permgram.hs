@@ -4,7 +4,7 @@
 --
 -- Permutation diagrams, or permutations as monads.
 
-module Data.Permgram
+module Sym.Permgram
     (
     -- * Data types
       Label
@@ -22,8 +22,8 @@ module Data.Permgram
 
 import Data.Ord
 import Data.List
-import Data.Perm (Perm)
-import qualified Data.Perm as P
+import Sym.Perm (Perm)
+import qualified Sym.Perm as P
 import Data.Array.Unboxed
 
 -- | The purpose of this data type is to assign labels to the indices of

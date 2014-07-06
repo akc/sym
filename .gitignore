@@ -6,3 +6,6 @@ cabal-dev
 *.chi
 *.chs.h
 tests/Properties
+tests/Test
+tests/Test.*
+TODO.txt

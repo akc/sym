@@ -3,7 +3,7 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
-module Math.Perm.Class
+module Sym.Perm.Class
     (
       inc
     , dec
@@ -32,12 +32,12 @@ module Math.Perm.Class
     , fibonacci
     ) where
 
-import Data.Perm
-import Math.Perm.Bijection
-import Math.Perm.Constructions
-import Data.Perm.Internal
-import Math.Perm.Pattern
-import qualified Math.Perm.D8 as D8
+import Sym.Internal.Util
+import Sym.Perm
+import Sym.Perm.Bijection
+import Sym.Perm.Constructions
+import Sym.Perm.Pattern
+import qualified Sym.Perm.D8 as D8
 
 -- | The class of increasing permutations.
 inc :: Int -> [Perm]
@@ -137,7 +137,7 @@ lt :: Int -> [Perm]
 lt = map D8.reverse . gt
 
 union :: [Int -> [Perm]] -> Int -> [Perm]
-union cs n = normalize $ concat [ c n | c <- cs ]
+union cs n = nubSort $ concat [ c n | c <- cs ]
 
 -- | The union of 'vee', 'caret', 'gt' and 'lt'.
 wedges :: Int -> [Perm]

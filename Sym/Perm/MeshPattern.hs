@@ -3,9 +3,9 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
--- TODO: Generalize interface and share with Math.Perm.Pattern
+-- TODO: Generalize interface and share with Sym.Perm.Pattern
 
-module Math.Perm.MeshPattern
+module Sym.Perm.MeshPattern
     ( MeshPattern (..)
     , Mesh
     , Box
@@ -25,18 +25,17 @@ module Math.Perm.MeshPattern
     , avoiders
     , kVincular
     , vincular
-    , kBivincular
     , bivincular
     , meshPatterns
     ) where
 
 import Data.List hiding (union)
-import Data.Size
-import Data.Perm.Internal hiding (Set)
-import qualified Data.Perm.Internal as I
+import Sym.Internal.Size
+import Sym.Perm
+import Sym.Internal.SubSeq
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Perm
+import Sym.Internal.Util
 
 type Point = (Int, Int)
 type Box   = (Int, Int)
@@ -76,24 +75,21 @@ box :: Box -> MeshPattern -> MeshPattern
 box xy = mesh [xy]
 
 kVincular :: Int -> Perm -> [MeshPattern]
-kVincular k w = (\xs -> cols (toList xs) (pattern w)) `fmap` subsets (1+size w) k
+kVincular k w = (flip cols (pattern w) . toList) `fmap` ((1+size w) `choose` k)
+-- kVincular k w = (\xs -> cols (toList xs) (pattern w)) `fmap` ((1+size w) `choose` k)
 
 vincular :: Perm -> [MeshPattern]
 vincular w = [0..1+size w] >>= flip kVincular w
 
--- WRONG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-kBivincular :: Int -> Perm -> [MeshPattern]
-kBivincular k w =
-    [ rows (toList ys) $ cols (toList xs) (pattern w) | xs <- sets, ys <- sets ]
-  where
-    n = size w
-    sets = subsets (n+1) k
-
 bivincular :: Perm -> [MeshPattern]
-bivincular w = [0..1+size w] >>= flip kBivincular w
+bivincular w =
+    [ foldr ((.) . either col row) id c $ pattern w | c <- choices ]
+  where
+    choices = powerset' $ [0..size w] >>= \z -> [Left z, Right z]
+    powerset' = fmap Set.toList . powerset . Set.fromList
 
 fullMesh :: Int -> Mesh
-fullMesh n = Set.fromList [ (x,y) | x <- range, y <- range ] where range = [0..n]
+fullMesh n = let zs = [0..n] in Set.fromList [ (x,y) | x <- zs, y <- zs ]
 
 meshPatterns :: Perm -> [MeshPattern]
 meshPatterns w = [ MP w r | r <- powerset (fullMesh (size w)) ]
@@ -111,7 +107,7 @@ match' (MP u r) v w =
 
 -- | @match p w m@ determines whether the subword in @w@ specified by
 -- @m@ is an occurrence of @p@.
-match :: MeshPattern -> Perm -> I.Set -> Bool
+match :: MeshPattern -> Perm -> SubSeq -> Bool
 match p w m = match' p v w'
   where
     w' = twoLine w
@@ -121,8 +117,8 @@ twoLine :: Perm -> PermTwoLine
 twoLine = zip [1..] . map (+1) . toList
 
 -- | @copiesOf p w@ is the list of sets that represent copies of @p@ in @w@.
-copiesOf :: MeshPattern -> Perm -> [I.Set]
-copiesOf p w = filter (match p w) $ subsets (size w) (size p)
+copiesOf :: MeshPattern -> Perm -> [SubSeq]
+copiesOf p w = filter (match p w) $ size w `choose` size p
 {-# INLINE copiesOf #-}
 
 -- | @w `contains` p@ is a predicate determining if @w@ contains the pattern @p@.
@@ -151,5 +147,5 @@ avoiders1 q vs@(v:_) = filter avoids_q us ++ filter (`avoids` q) ws
       n = size v
       k = size q
       (us, ws) = span (\u -> size u == n) vs
-      xs = subsets n k
+      xs = n `choose` k
       avoids_q u = not $ any (match q u) xs

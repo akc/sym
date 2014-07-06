@@ -1,4 +1,4 @@
-module Data.Size (Size (..)) where
+module Sym.Internal.Size (Size (..)) where
 
 import qualified Data.Set as Set
 
