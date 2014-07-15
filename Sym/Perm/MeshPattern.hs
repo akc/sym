@@ -9,7 +9,6 @@ module Sym.Perm.MeshPattern
     ( MeshPattern (..)
     , Mesh
     , Box
-    , Point
     , mkPattern
     , pattern
     , mesh
@@ -37,9 +36,13 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Sym.Internal.Util
 
+-- | A mesh is a, possibly empty, set of shaded boxes.
+type Mesh = Set Box
+
+-- | A box is represented by the coordinates of its southwest corner.
+type Box  = (Int, Int)
+
 type Point = (Int, Int)
-type Box   = (Int, Int)
-type Mesh  = Set Box
 type PermTwoLine = [Point]
 
 data MeshPattern = MP
@@ -76,7 +79,6 @@ box xy = mesh [xy]
 
 kVincular :: Int -> Perm -> [MeshPattern]
 kVincular k w = (flip cols (pattern w) . toList) `fmap` ((1+size w) `choose` k)
--- kVincular k w = (\xs -> cols (toList xs) (pattern w)) `fmap` ((1+size w) `choose` k)
 
 vincular :: Perm -> [MeshPattern]
 vincular w = [0..1+size w] >>= flip kVincular w
