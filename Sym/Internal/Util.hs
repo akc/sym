@@ -17,14 +17,14 @@ import Data.Ord
 import Data.Set (Set)
 import qualified Data.Set as S
 
--- | The set of minimal elements with respect to inclusion.
+-- | The list of minimal sets with respect to inclusion.
 minima :: Ord a => [Set a] -> [Set a]
 minima = minima' . sortBy (comparing S.size)
   where
     minima' [] = []
     minima' (x:xs) = x : minima' [ y | y<-xs, not (x `S.isSubsetOf` y) ]
 
--- | The set of maximal elements with respect to the given order.
+-- | The list of maximal sets with respect to inclusion.
 maxima :: Ord a => [Set a] -> [Set a]
 maxima = maxima' . sortBy (comparing $ \x -> -S.size x)
   where
