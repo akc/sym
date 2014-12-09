@@ -124,16 +124,15 @@ unsafeAt w = fromIntegral . inlinePerformIO . unsafeWith w . flip peekElemOff
 
 -- | The indices of all elements equal to the query element, in
 -- ascending order.
-elemIndices :: Int -> CLongArray -> [Int]
+elemIndices :: CLong -> CLongArray -> [Int]
 elemIndices x w = inlinePerformIO $ unsafeWith w (go 0)
   where
-    n  = size w
-    x' = fromIntegral x
+    n = size w
     go i p
       | i >= n = return []
       | otherwise = do
-          y  <- peek p
-          ([ i | y == x' ] ++) `fmap` go (i+1) (advancePtr p 1)
+          y <- peek p
+          ([ i | y == x ] ++) `fmap` go (i+1) (advancePtr p 1)
 
 
 -- Map and Zip
