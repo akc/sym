@@ -22,6 +22,8 @@ module Sym.Permgram
 
 import Data.Ord
 import Data.List
+import Control.Monad
+import Control.Applicative
 import Sym.Perm (Perm)
 import qualified Sym.Perm as P
 import Data.Array.Unboxed
@@ -79,6 +81,10 @@ instance Functor Permgram where
 instance Monad Permgram where
     return x = permgram (P.fromList [0]) [x]
     w >>= f  = joinPermgram $ fmap f w
+
+instance Applicative Permgram where
+    pure  = return
+    (<*>) = ap
 
 joinPermgram :: Permgram (Permgram a) -> Permgram a
 joinPermgram w@(PGram u f) = PGram (P.fromList xs) (listArray (0,m-1) ys)

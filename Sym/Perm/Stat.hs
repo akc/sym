@@ -47,7 +47,6 @@ module Sym.Perm.Stat
     ) where
 
 import Prelude hiding (head, last)
-import qualified Prelude
 import Sym.Perm
 import qualified Sym.Perm.SSYT as Y
 import qualified Sym.Perm.D8 as D8
