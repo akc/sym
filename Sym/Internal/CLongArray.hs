@@ -21,6 +21,7 @@ module Sym.Internal.CLongArray
     , size
     , at
     , unsafeAt
+    , elemIndices
 
     -- * Map
     , imap
@@ -120,6 +121,19 @@ at w i =
 unsafeAt :: CLongArray -> Int -> Int
 unsafeAt w = fromIntegral . inlinePerformIO . unsafeWith w . flip peekElemOff
 {-# INLINE unsafeAt #-}
+
+-- | The indices of all elements equal to the query element, in
+-- ascending order.
+elemIndices :: Int -> CLongArray -> [Int]
+elemIndices x w = inlinePerformIO $ unsafeWith w (go 0)
+  where
+    n  = size w
+    x' = fromIntegral x
+    go i p
+      | i >= n = return []
+      | otherwise = do
+          y  <- peek p
+          ([ i | y == x' ] ++) `fmap` go (i+1) (advancePtr p 1)
 
 
 -- Map and Zip
