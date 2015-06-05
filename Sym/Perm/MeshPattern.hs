@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -- |
 -- Copyright   : Anders Claesson 2014
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
@@ -28,7 +30,9 @@ module Sym.Perm.MeshPattern
     , meshPatterns
     ) where
 
+import GHC.Generics (Generic)
 import Data.List hiding (union)
+import Data.Serialize
 import Sym.Internal.Size
 import Sym.Perm
 import Sym.Internal.SubSeq
@@ -48,7 +52,9 @@ type PermTwoLine = [Point]
 data MeshPattern = MP
     { getPerm :: Perm
     , getMesh :: Mesh
-    } deriving (Show, Eq, Ord)
+    } deriving (Show, Eq, Ord, Generic)
+
+instance Serialize MeshPattern
 
 instance Size MeshPattern where
     size = size . getPerm

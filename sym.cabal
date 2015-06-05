@@ -1,5 +1,5 @@
 name:                sym
-version:             0.11.1
+version:             0.11.2
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation
@@ -44,7 +44,8 @@ library
                        array >=0.4,
                        hashable >=1.1,
                        containers,
-                       QuickCheck >=2.5
+                       QuickCheck >=2.5,
+                       cereal >=0.4
 
   ghc-prof-options:    -auto-all
   ghc-options:         -Wall

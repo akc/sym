@@ -33,6 +33,7 @@ module Sym.Internal.CLongArray
     ) where
 
 import Data.Ord
+import Data.Serialize
 import Sym.Internal.Size
 import Foreign
 import Foreign.C.Types
@@ -52,6 +53,10 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 -- | An array of 'CLong's
 data CLongArray = CArr {-# UNPACK #-} !(ForeignPtr CLong) -- elements
                        {-# UNPACK #-} !Int                -- size
+
+instance Serialize CLongArray where
+    put = put . toList
+    get = fmap fromList get
 
 instance Show CLongArray where
     show w = "fromList " ++ show (toList w)
