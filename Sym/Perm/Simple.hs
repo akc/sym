@@ -20,6 +20,6 @@ foreign import ccall unsafe "simple.h simple" c_simple
 
 -- | Is the permutation simple?
 simple :: Perm -> Bool
-simple w = toBool . unsafeDupablePerformIO $
+simple w = toBool . unsafePerformIO $
     let n = fromIntegral (size w)
     in unsafeWith w $ \ptr -> return $ c_simple ptr n

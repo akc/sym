@@ -23,7 +23,7 @@ import qualified Sym.Perm.D8 as D8
 -- Positions /i/ such that /max{ w[j] : j <= i } = i/. These positions
 -- mark the boundaries of components.
 comps :: Perm -> [Int]
-comps w = unsafeDupablePerformIO . unsafeWith w $ go [] 0 0
+comps w = unsafePerformIO . unsafeWith w $ go [] 0 0
     where
       n = size w
       go ks m i p

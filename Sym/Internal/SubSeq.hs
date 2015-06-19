@@ -70,7 +70,7 @@ foreign import ccall unsafe "bit.h ones" c_ones :: Ptr CLong -> CLong -> IO ()
 
 -- | @onesCLong m@ gives the indices whose bits are set in @m@.
 onesCLong :: CLong -> CLongArray
-onesCLong m = unsafeDupablePerformIO . unsafeNew (popCount m) $ flip c_ones m
+onesCLong m = unsafePerformIO . unsafeNew (popCount m) $ flip c_ones m
 
 -- | Lexicographically, the next integral number with the same Hamming weight.
 nextIntegral :: (Integral a, Bits a) => a -> a

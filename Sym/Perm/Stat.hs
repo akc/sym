@@ -56,7 +56,7 @@ import System.IO.Unsafe
 
 marshal :: (Ptr CLong -> CLong -> CLong) -> Perm -> Int
 marshal f w =
-    fromIntegral . unsafeDupablePerformIO . unsafeWith w $ \p ->
+    fromIntegral . unsafePerformIO . unsafeWith w $ \p ->
         return $ f p (fromIntegral (size w))
 {-# INLINE marshal #-}
 

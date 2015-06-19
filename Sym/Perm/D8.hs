@@ -119,7 +119,7 @@ klein4Classes = symmetryClasses klein4
 
 marshal :: (Ptr CLong -> Ptr CLong -> CLong -> IO ()) -> Perm -> Perm
 marshal op w =
-    unsafeDupablePerformIO . unsafeWith w $ \p -> do
+    unsafePerformIO . unsafeWith w $ \p -> do
       let n = size w
       unsafeNew n $ \q -> op q p (fromIntegral n)
 {-# INLINE marshal #-}

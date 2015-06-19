@@ -30,7 +30,7 @@ infixl 6 \-\
    let k  = size u
        l  = size v
        v' = imap (\_ x -> x + fromIntegral k) v
-   in unsafeDupablePerformIO . unsafeNew (k+l) $ \p ->
+   in unsafePerformIO . unsafeNew (k+l) $ \p ->
        let q = advancePtr p k
        in unsafeWith u  $ \uPtr ->
           unsafeWith v' $ \vPtr -> do

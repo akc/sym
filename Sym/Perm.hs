@@ -64,7 +64,7 @@ foreign import ccall unsafe "rank.h rank" c_rank
 rank :: Perm -> Integer
 rank w =
     let n = fromIntegral (size w)
-    in truncate . unsafeDupablePerformIO . unsafeWith w $ flip c_rank n
+    in truncate . unsafePerformIO . unsafeWith w $ flip c_rank n
 {-# INLINE rank #-}
 
 foreign import ccall unsafe "rank.h unrank" c_unrank
@@ -76,7 +76,7 @@ foreign import ccall unsafe "rank.h unrank" c_unrank
 -- (2001) 281-284].
 unrank :: Int -> Integer -> Perm
 unrank n r =
-    unsafeDupablePerformIO . unsafeNew n $ \ptr ->
+    unsafePerformIO . unsafeNew n $ \ptr ->
         c_unrank ptr (fromIntegral n) (fromIntegral r)
 {-# INLINE unrank #-}
 

@@ -24,7 +24,7 @@ foreign import ccall unsafe "bij.h simion_schmidt_inverse" c_simion_schmidt'
 
 marshal :: (Ptr CLong -> Ptr CLong -> CLong -> IO ()) -> Perm -> Perm
 marshal bij w =
-    unsafeDupablePerformIO . unsafeWith w $ \p -> do
+    unsafePerformIO . unsafeWith w $ \p -> do
       let n = size w
       unsafeNew n $ \q -> bij q p (fromIntegral n)
 {-# INLINE marshal #-}

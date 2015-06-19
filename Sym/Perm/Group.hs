@@ -19,7 +19,7 @@ import System.IO.Unsafe
 marshal :: (Ptr CLong -> Ptr CLong -> CLong -> Ptr CLong -> CLong -> IO ())
         -> Perm -> Perm -> Perm
 marshal op u v =
-    unsafeDupablePerformIO $
+    unsafePerformIO $
     unsafeWith u $ \u' ->
     unsafeWith v $ \v' -> do
       let k = size u

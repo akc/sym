@@ -39,7 +39,7 @@ foreign import ccall unsafe "ordiso.h ordiso" c_ordiso
 ordiso :: Pattern -> Perm -> SubSeq -> Bool
 ordiso u v m =
     let k = fromIntegral (size u)
-    in unsafeDupablePerformIO $
+    in unsafePerformIO $
        unsafeWith u $ \u' ->
        unsafeWith v $ \v' ->
        unsafeWith m $ \m' ->
