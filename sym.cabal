@@ -1,5 +1,5 @@
 name:                sym
-version:             0.11.3
+version:             0.11.4
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation

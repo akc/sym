@@ -37,15 +37,10 @@ import Data.Serialize
 import Sym.Internal.Size
 import Foreign
 import Foreign.C.Types
-import GHC.Base
+import System.IO.Unsafe
 
 infixl 9 `at`
 infixl 9 `unsafeAt`
-
-inlinePerformIO :: IO a -> a
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-{-# INLINE inlinePerformIO #-}
-
 
 -- Data type
 -- ---------
@@ -82,13 +77,11 @@ instance Size CLongArray where
 fromList :: [Int] -> CLongArray
 fromList xs = CArr p (length xs)
   where
-    p = inlinePerformIO $ newForeignPtr finalizerFree =<< newArray (map fromIntegral xs)
-{-# INLINE fromList #-}
+    p = unsafePerformIO $ newForeignPtr finalizerFree =<< newArray (map fromIntegral xs)
 
 -- | The list of elements.
 toList :: CLongArray -> [Int]
-toList w = map fromIntegral . inlinePerformIO . unsafeWith w $ peekArray (size w)
-{-# INLINE toList #-}
+toList w = map fromIntegral . unsafePerformIO . unsafeWith w $ peekArray (size w)
 
 -- | Slice a 'CLongArray' into contiguous segments of the given
 -- sizes. Each segment size must be positive and they must sum to the
@@ -101,7 +94,7 @@ slice ks w
 
 -- | Like 'slice' but without range checking.
 unsafeSlice :: [Int] -> CLongArray -> [CLongArray]
-unsafeSlice parts w = inlinePerformIO . unsafeWith w $ go parts
+unsafeSlice parts w = unsafePerformIO . unsafeWith w $ go parts
   where
     go []     _ = return []
     go (k:ks) p = do
@@ -120,17 +113,15 @@ at w i =
     in if i < 0 || i >= n
        then error $ "Sym.Internal.CLongArray.at: " ++ show i ++ " not in [0.." ++ show (n-1) ++ "]"
        else unsafeAt w i
-{-# INLINE at #-}
 
 -- | Like 'at' but without range checking.
 unsafeAt :: CLongArray -> Int -> Int
-unsafeAt w = fromIntegral . inlinePerformIO . unsafeWith w . flip peekElemOff
-{-# INLINE unsafeAt #-}
+unsafeAt w = fromIntegral . unsafePerformIO . unsafeWith w . flip peekElemOff
 
 -- | The indices of all elements equal to the query element, in
 -- ascending order.
 elemIndices :: CLong -> CLongArray -> [Int]
-elemIndices x w = inlinePerformIO $ unsafeWith w (go 0)
+elemIndices x w = unsafePerformIO $ unsafeWith w (go 0)
   where
     n = size w
     go i p
@@ -145,7 +136,7 @@ elemIndices x w = inlinePerformIO $ unsafeWith w (go 0)
 
 -- | Apply a function to every element of an array and its index.
 imap :: (Int -> CLong -> CLong) -> CLongArray -> CLongArray
-imap f w = inlinePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
+imap f w = unsafePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
   where
     n = size w
     go i p q
@@ -158,7 +149,7 @@ imap f w = inlinePerformIO . unsafeWith w $ \p -> unsafeNew n (go 0 p)
 -- | Apply a function to corresponding pairs of elements and their (shared) index.
 izipWith :: (Int -> CLong -> CLong -> CLong) -> CLongArray -> CLongArray -> CLongArray
 izipWith f u v =
-    inlinePerformIO . unsafeWith u $ \p -> unsafeWith v $ \q -> unsafeNew n (go 0 p q)
+    unsafePerformIO . unsafeWith u $ \p -> unsafeWith v $ \q -> unsafeNew n (go 0 p q)
   where
     n = min (size u) (size v)
     go i p q r
@@ -179,10 +170,8 @@ unsafeNew n act = do
   q <- newForeignPtr finalizerFree =<< mallocArray n
   withForeignPtr q act
   return $ CArr q n
-{-# INLINE unsafeNew #-}
 
 -- | Pass a pointer to the array to an IO action; the array may not be
 -- modified through the pointer.
 unsafeWith :: CLongArray -> (Ptr CLong -> IO a) -> IO a
 unsafeWith (CArr p _) = withForeignPtr p
-{-# INLINE unsafeWith #-}
