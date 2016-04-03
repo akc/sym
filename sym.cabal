@@ -1,5 +1,5 @@
 name:                sym
-version:             0.11.4
+version:             0.12.0
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation
@@ -41,14 +41,12 @@ library
                        Sym.Internal.Util
 
   build-depends:       base >=4.7 && <= 5,
+                       vector >=0.11,
                        array >=0.4,
                        hashable >=1.1,
-                       containers,
-                       QuickCheck >=2.5,
-                       cereal >=0.4
+                       containers
 
-  ghc-prof-options:    -auto-all
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2
   cc-options:          -Wall
 
   c-sources:           cbits/rank.c
@@ -60,3 +58,12 @@ library
                        cbits/bit.c
                        cbits/simple.c
                        cbits/sortop.c
+
+Test-Suite Props
+  type:                exitcode-stdio-1.0
+  Main-is:             Properties.hs
+  hs-source-dirs:      tests
+  Build-depends:       base >=4.7 && <= 5,
+                       sym,
+                       hashable >=1.1,
+                       QuickCheck >=2.5

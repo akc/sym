@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 -- |
--- Copyright   : Anders Claesson 2013
+-- Copyright   : Anders Claesson 2013-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 -- Data types for Semistandard Young Tableaux (SSYT) and functions for
@@ -142,7 +142,7 @@ fromGeneralizedPerm = foldl insertPQ empty
 
 -- | The Robinson-Schensted algorithm.
 fromPerm :: Perm -> SSYTPair
-fromPerm = fromGeneralizedPerm . zip [0..] . toList
+fromPerm = fromGeneralizedPerm . zip [0..] . map fromIntegral . toList
 
 -- | The inverse of the Robinson-Schensted-Knuth algorithm.
 toGeneralizedPerm :: SSYTPair -> GeneralizedPerm
@@ -153,4 +153,4 @@ toGeneralizedPerm = go []
 
 -- | The inverse of the Robinson-Schensted algorithm.
 toPerm :: SSYTPair -> Perm
-toPerm = fromList . map snd . toGeneralizedPerm
+toPerm = fromList . map (fromIntegral . snd) . toGeneralizedPerm

@@ -1,7 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface, TypeSynonymInstances #-}
 
 -- |
--- Copyright   : Anders Claesson 2013
+-- Copyright   : Anders Claesson 2013-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 -- Generating permutations: rank and unrank
@@ -40,7 +40,7 @@ one = fromList [0]
 
 -- | The identity permutation.
 idperm :: Int -> Perm
-idperm n = fromList [0..n-1]
+idperm n = fromList [0 .. n-1]
 
 -- | The reverse of the identity permutation.
 ebb :: Int -> Perm
@@ -52,7 +52,7 @@ ebb n = fromList [n-1,n-2..0]
 -- E.g., @mkPerm \"baxa\" == fromList [2,0,3,1]@.
 mkPerm :: Ord a => [a] -> Perm
 mkPerm xs =
-    let sti ys = map snd . sort $ zip ys [ 0::Int .. ]
+    let sti ys = map snd . sort $ zip ys [0::Int ..]
     in fromList $ (sti . sti) xs
 
 foreign import ccall unsafe "rank.h rank" c_rank

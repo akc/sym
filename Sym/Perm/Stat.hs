@@ -1,7 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- |
--- Copyright   : Anders Claesson 2013
+-- Copyright   : Anders Claesson 2013-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 -- Common permutation statistics. To avoid name clashes this module is
@@ -210,13 +210,13 @@ rmax = lmax . D8.reverse
 -- | The first (left-most) element in the standardization. E.g.,
 -- @head \"231\" = head (fromList [1,2,0]) = 1@.
 head :: Perm -> Int
-head w | size w > 0 = w `unsafeAt` 0
+head w | size w > 0 = fromIntegral (w `unsafeAt` 0)
        | otherwise  = 0
 
 -- | The last (right-most) element in the standardization. E.g.,
 -- @last \"231\" = last (fromList [1,2,0]) = 0@.
 last :: Perm -> Int
-last w | size w > 0 = w `unsafeAt` (size w - 1)
+last w | size w > 0 = fromIntegral (w `unsafeAt` (size w - 1))
        | otherwise  = 0
 
 -- | Length of the left-most increasing run: largest @i@ such that

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 -- |
--- Copyright   : Anders Claesson 2013
+-- Copyright   : Anders Claesson 2013-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 
@@ -18,8 +18,11 @@ import Data.Hashable
 import Control.Monad
 import Test.QuickCheck
 
+checkN :: Testable prop => Int -> prop -> IO Result
+checkN n = quickCheckWithResult stdArgs {maxSuccess = n}
+
 check :: Testable prop => prop -> IO ()
-check = quickCheck
+check p = checkN 1000 p >> return ()
 
 --------------------------------------------------------------------------------
 -- Generators

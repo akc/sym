@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2013
+-- Copyright   : Anders Claesson 2013-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
 -- Components of permutations.
@@ -41,7 +41,7 @@ components :: Perm -> [Perm]
 components w =
     let ds = 0 : map (+1) (comps w)
         ks = zipWith (-) (tail ds) ds
-        ws = unsafeSlice ks w
+        ws = slices ks w
     in zipWith (\d v -> imap (\_ x -> x - fromIntegral d) v) ds ws
 
 -- | The list of skew components, also called minus components.
@@ -58,19 +58,19 @@ records f (x:xs) = recs [x] xs
 -- | For each position, left-to-right, records the largest value seen
 -- thus far.
 leftMaxima :: Perm -> [Int]
-leftMaxima w = reverse $ records (<) (toList w)
+leftMaxima w = map fromIntegral . reverse $ records (<) (toList w)
 
 -- | For each position, left-to-right, records the smallest value seen
 -- thus far.
 leftMinima :: Perm -> [Int]
-leftMinima w = reverse $ records (>) (toList w)
+leftMinima w = map fromIntegral . reverse $ records (>) (toList w)
 
 -- | For each position, /right-to-left/, records the largest value seen
 -- thus far.
 rightMaxima :: Perm -> [Int]
-rightMaxima w = records (<) (reverse (toList w))
+rightMaxima w = map fromIntegral $ records (<) (reverse (toList w))
 
 -- | For each position, /right-to-left/, records the smallest value seen
 -- thus far.
 rightMinima :: Perm -> [Int]
-rightMinima w = records (>) (reverse (toList w))
+rightMinima w = map fromIntegral $ records (>) (reverse (toList w))
