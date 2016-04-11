@@ -43,7 +43,7 @@ infixl 9 `unsafeAt`
 -- ---------
 
 -- | An array of 'CLong's
-newtype CLongArray = CArr (V.Vector CLong) deriving (Show, Eq)
+newtype CLongArray = CArr (V.Vector CLong) deriving (Eq)
 
 instance Ord CLongArray where
     compare u v =
@@ -54,6 +54,9 @@ instance Ord CLongArray where
 instance Size CLongArray where
     size (CArr w) = V.length w
     {-# INLINE size #-}
+
+instance Show CLongArray where
+    show w = "fromList " ++ show (toList w)
 
 
 -- Conversions

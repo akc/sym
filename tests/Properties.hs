@@ -22,7 +22,7 @@ checkN :: Testable prop => Int -> prop -> IO Result
 checkN n = quickCheckWithResult stdArgs {maxSuccess = n}
 
 check :: Testable prop => prop -> IO ()
-check p = checkN 1000 p >> return ()
+check p = void (checkN 1000 p)
 
 --------------------------------------------------------------------------------
 -- Generators
