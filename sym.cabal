@@ -29,6 +29,7 @@ library
                        Sym.Perm.Group
                        Sym.Perm.Bijection
                        Sym.Perm.Stat
+                       Sym.Perm.STAT
                        Sym.Perm.Sort
                        Sym.Perm.Simple
                        Sym.Perm.Pattern
