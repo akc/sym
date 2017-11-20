@@ -91,7 +91,7 @@ class Permutation a where
     -- > unst w == w `act` idperm (P.size w)
     -- 
     -- and this is the default implementation.
-    unst :: Permutation a => Perm -> a
+    unst :: Perm -> a
     unst w = w `act` idperm (P.size w)
 
 instance Permutation Perm where
