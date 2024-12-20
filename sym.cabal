@@ -1,5 +1,5 @@
 name:                sym
-version:             0.13.0
+version:             0.14.0
 synopsis:            Permutations, patterns, and statistics
 description:
   Definitions for permutations with an emphasis on permutation
@@ -29,7 +29,7 @@ library
                        Sym.Perm.Group
                        Sym.Perm.Bijection
                        Sym.Perm.Stat
-                       Sym.Perm.STAT
+                       Sym.Perm.ListStat
                        Sym.Perm.Sort
                        Sym.Perm.Simple
                        Sym.Perm.Pattern

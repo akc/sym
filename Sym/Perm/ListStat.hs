@@ -2,11 +2,11 @@
 -- Copyright   : Anders Claesson 2017
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 --
--- Common permutation statistics. Most of these are "set" versions of
+-- Common permutation statistics. Most of these are refined (list) versions of
 -- those in Sym.Perm.Stat
 --
 
-module Sym.Perm.STAT
+module Sym.Perm.ListStat
     (
       asc         -- list of ascent
     , ascIx       -- ascent indices
