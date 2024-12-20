@@ -23,7 +23,6 @@ module Sym.Permgram
 import Data.Ord
 import Data.List
 import Control.Monad
-import Control.Applicative
 import Sym.Perm (Perm, unsafeAt)
 import qualified Sym.Perm as P
 import Data.Vector (Vector, (!))
@@ -79,13 +78,12 @@ size = P.size . perm
 instance Functor Permgram where
     fmap f w = w { label = V.map f (label w) }
 
-instance Monad Permgram where
-    return x = permgram (P.fromList [0]) [x]
-    w >>= f  = joinPermgram $ fmap f w
-
 instance Applicative Permgram where
-    pure  = return
+    pure x = permgram (P.fromList [0]) [x]
     (<*>) = ap
+
+instance Monad Permgram where
+    w >>= f  = joinPermgram $ fmap f w
 
 joinPermgram :: Permgram (Permgram a) -> Permgram a
 joinPermgram w@(PGram u f) = PGram (P.fromList xs) (V.fromListN m ys)

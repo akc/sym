@@ -42,8 +42,6 @@ module Sym.Perm.STAT
 
 import Prelude hiding (head, last)
 import Sym.Perm
-import qualified Sym.Perm.SSYT as Y
-import qualified Sym.Perm.D8 as D8
 
 asc :: Perm -> [(Int, Int, Int)]
 asc w =

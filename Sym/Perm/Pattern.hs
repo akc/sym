@@ -83,16 +83,18 @@ avoiders1 q vs@(v:_) = filter avoids_q us ++ filter (`avoids` q) ws
 -- | The set of minimal elements with respect to containment.  FIX: Poor
 -- implementation
 minima :: [Pattern] -> [Pattern]
-minima [] = []
-minima ws = let (v:vs) = nubSort ws
-            in v : minima (avoiders [v] vs)
+minima ws =
+    case nubSort ws of
+      [] -> []
+      (v:vs) -> v : minima (avoiders [v] vs)
 
 -- | The set of maximal elements with respect to containment. FIX: Poor
 -- implementation
 maxima :: [Pattern] -> [Pattern]
-maxima [] = []
-maxima ws = let (v:vs) = reverse $ nubSort ws
-            in v : maxima (filter (avoids v) vs)
+maxima ws =
+    case reverse (nubSort ws) of
+      [] -> []
+      (v:vs) -> v : maxima (filter (avoids v) vs)
 
 -- | @coeff f v@ is the coefficient of @v@ when expanding the
 -- permutation statistic @f@ as a sum of permutations/patterns. See
