@@ -12,13 +12,15 @@ author:              Anders Claesson
 maintainer:          anders.claesson@gmail.com
 category:            Math
 build-type:          Simple
-cabal-version:       >=1.8
+cabal-version:       >=1.9
 
 source-repository head
   type:                git
   location:            git://github.com/akc/sym.git
 
 library
+  default-language:    Haskell2010
+
   exposed-modules:     Sym
                        Sym.Perm
                        Sym.Perm.Meta
@@ -42,9 +44,9 @@ library
                        Sym.Internal.Util
 
   build-depends:       base >=4.7 && <= 5,
-                       vector >=0.11,
-                       hashable >=1.1,
-                       containers
+                       vector >=0.11 && <= 1,
+                       hashable >=1.1 && <= 2,
+                       containers >= 0.6 && <= 1
 
   ghc-options:         -Wall -O2
   cc-options:          -Wall
@@ -60,6 +62,7 @@ library
                        cbits/sortop.c
 
 Test-Suite Props
+  default-language:    Haskell2010
   type:                exitcode-stdio-1.0
   Main-is:             Properties.hs
   hs-source-dirs:      tests
